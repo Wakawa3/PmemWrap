@@ -75,8 +75,8 @@ void write_hello_string (char *buf, char *path)
 
 
 	/* store a string to the persistent memory */
-	char buf2[] = "test2";
-	char buf3[] = "test3";
+	char *buf2 = buf;
+	char *buf3 = buf;
 
 	strcpy(pmemaddr, buf);
 	strcpy(pmemaddr2, buf2);
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	char *path = argv[2];
 	
 	// Create the string to save to persistent memory
-	char buf[MAX_BUF_LEN] = "Hello Persistent Memory!!!";
+	char *buf = argv[3];
 	
 	if (strcmp (argv[1], "-w") == 0) {
 	

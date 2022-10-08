@@ -67,25 +67,31 @@ PMEMoid pmemobj_root(void *pop, size_t size){ //PMEMobjpool *pop, size_t size
     return orig_pmemobj_root(pop, size);
 }
 
-void *pmemobj_direct(PMEMoid oid){
-    printf("wrap pmemobj_direct\n");
-    if(is_obj == 0){
-        fprintf(stderr, "error: wrap pmemobj_direct\n");
-        exit(1);
-    }
-
-    if(obj_direct_used == 0){
-        obj_direct_used = 1;
-        void *(*orig_pmemobj_direct)(PMEMoid) = dlsym(RTLD_NEXT, "pmemobj_direct");
-        orig_rootp = orig_pmemobj_direct(oid);
-
-        fake_rootp = malloc(root_size);
-        memcpy(fake_rootp, orig_rootp, root_size);
-        return fake_rootp;
-    }
-    else{ //obj_direct_used == 1
-        return fake_rootp;
-    }
+void *pmemobj_openU(const char *path, const char *layout){
+    printf("wrap pmemobj_openU\n");
+    void *(*orig_pmemobj_openU)(const char*, const char*) = dlsym(RTLD_NEXT, "pmemobj_openU");
+    return orig_pmemobj_openU(path, layout);
 }
+
+// void *pmemobj_direct(PMEMoid oid){
+//     printf("wrap pmemobj_direct\n");
+//     if(is_obj == 0){
+//         fprintf(stderr, "error: wrap pmemobj_direct\n");
+//         exit(1);
+//     }
+
+//     if(obj_direct_used == 0){
+//         obj_direct_used = 1;
+//         void *(*orig_pmemobj_direct)(PMEMoid) = dlsym(RTLD_NEXT, "pmemobj_direct");
+//         orig_rootp = orig_pmemobj_direct(oid);
+
+//         fake_rootp = malloc(root_size);
+//         memcpy(fake_rootp, orig_rootp, root_size);
+//         return fake_rootp;
+//     }
+//     else{ //obj_direct_used == 1
+//         return fake_rootp;
+//     }
+// }
 
 

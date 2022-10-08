@@ -19,4 +19,7 @@ $(OBJS): $(SRCS)
 clean:
 	-rm -f $(OBJS) $(SHARED) $(TARGET)
 
+nowrap:
+	$(CC) -o $(TARGET) $(RUN_SRCS) -lpmem -lpmemobj
+
 #$@は:の左 $^は:の右
