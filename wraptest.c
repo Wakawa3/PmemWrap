@@ -111,7 +111,7 @@ int pmem_unmap(void *addr, size_t len){
                 tmp->prev->next = tmp->next;
                 tmp->next->prev = tmp->prev;
             }
-            //memcpy(tmp->orig_addr, tmp->fake_addr, len);
+            memcpy(tmp->orig_addr, tmp->fake_addr, len);
             orig_addr = tmp->orig_addr;
             free(tmp);
             return orig_pmem_unmap(orig_addr, len);
