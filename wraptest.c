@@ -68,17 +68,17 @@ void pmem_persist(const void *addr, size_t len){
         return;
     }
 
-    PMEMaddrset *tmp = head;
+    PMEMaddrset *set = head;
 
-    while(tmp != NULL){
-        if(tmp->fake_addr == addr){
-            //rand_memcpy(tmp->orig_addr, tmp->fake_addr, len);
-            rand_file_generate(tmp, len);
-            memcpy(tmp->orig_addr, tmp->fake_addr, len);
-            orig_pmem_persist(tmp->orig_addr, len);
+    while(set != NULL){
+        if(set->fake_addr == addr){
+            //rand_memcpy(set->orig_addr, set->fake_addr, len);
+            rand_file_generate(set, len);
+            memcpy(set->orig_addr, set->fake_addr, len);
+            orig_pmem_persist(set->orig_addr, len);
             return;
         }
-        tmp = tmp->next;
+        set = set->next;
     }
 }
 
@@ -90,33 +90,33 @@ int pmem_unmap(void *addr, size_t len){
         return orig_pmem_unmap(addr, len);
     }
 
-    PMEMaddrset *tmp = head;
+    PMEMaddrset *set = head;
     void *orig_addr;
 
-    while(tmp != NULL){
-        if(tmp->fake_addr == addr){
-            if(tmp == head && tmp == tail){
+    while(set != NULL){
+        if(set->fake_addr == addr){
+            if(set == head && set == tail){
                 head = NULL;
                 tail = NULL;
             }
-            else if(tmp == head && tmp != tail){
-                tmp->next->prev = NULL;
-                head = tmp->next;
+            else if(set == head && set != tail){
+                set->next->prev = NULL;
+                head = set->next;
             }
-            else if(tmp != head && tmp == tail){
-                tmp->prev->next = NULL;
-                tail = tmp->prev;
+            else if(set != head && set == tail){
+                set->prev->next = NULL;
+                tail = set->prev;
             }
-            else{ //tmp != head && tmp != tail
-                tmp->prev->next = tmp->next;
-                tmp->next->prev = tmp->prev;
+            else{ //set != head && set != tail
+                set->prev->next = set->next;
+                set->next->prev = set->prev;
             }
-            memcpy(tmp->orig_addr, tmp->fake_addr, len);
-            orig_addr = tmp->orig_addr;
-            free(tmp);
+            memcpy(set->orig_addr, set->fake_addr, len);
+            orig_addr = set->orig_addr;
+            free(set);
             return orig_pmem_unmap(orig_addr, len);
         }
-        tmp = tmp->next;
+        set = set->next;
     }
 
     return -1;
@@ -155,6 +155,16 @@ void rand_file_generate(PMEMaddrset *set, size_t n){
     set->persist_count++;
 }
 
+__attribute__ ((destructor))
+static void destructor () {
+    printf("destructor\n");
+    PMEMaddrset *set = head;
+
+    while(set != NULL){
+        memcpy(set->orig_addr, set->fake_addr, set->len);
+        set = set->next;
+    }
+}
 // void *util_map_sync(void *addr, size_t len, int proto, int flags, int fd, long int offset, int *map_sync){
 //     printf("wrap util_map_sync\n");
 //     void* (*orig_util_map_sync)(void*, size_t, int, int, int, long int, int*) = dlsym(RTLD_NEXT, "util_map_sync");

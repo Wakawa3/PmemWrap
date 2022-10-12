@@ -99,7 +99,6 @@ void write_hello_string (char *buf, char *path)
 	pmem_unmap(pmemaddr, mapped_len);
 	pmem_unmap(pmemaddr2, mapped_len2);
 	pmem_unmap(pmemaddr3, mapped_len3);
-	
 			
 	return;	
 }
