@@ -1,5 +1,5 @@
 CC = gcc
-CFLALGS = -lwrappmem -lpmem -lpmemobj
+CFLALGS = -ggdb -lwrappmem -lpmem -lpmemobj
 TARGET = a.out
 RUN_SRCS = libpmemtest.c
 SRCS = wraptest.c
