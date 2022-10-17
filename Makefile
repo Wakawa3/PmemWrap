@@ -1,7 +1,7 @@
 CC = gcc
 CFLALGS = -ggdb -lwrappmem -lpmem -lpmemobj
 TARGET = a.out
-RUN_SRCS = libpmemtest.c
+RUN_SRCS = libpmemtest.c libpmemtest2.c
 SRCS = wraptest.c
 OBJS = $(SRCS:.c=.o)
 SHARED = libwrappmem.so

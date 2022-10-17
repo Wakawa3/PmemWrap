@@ -12,6 +12,8 @@
 // Maximum length of our buffer
 #define MAX_BUF_LEN 30
 
+extern void testfunc(void *addr, int len);
+
 void write_hello_string (char *buf, char *path)
 {
 	char *pmemaddr, *pmemaddr2, *pmemaddr3;
@@ -49,10 +51,10 @@ void write_hello_string (char *buf, char *path)
 	/* flush above strcpy to persistence */
 	printf("is_pmem:%d\n", is_pmem);
 	printf("pmemaddr: %p, pmemaddr2: %p, pmemaddr3: %p\n",pmemaddr, pmemaddr2, pmemaddr3);
-	printf("pmemaddr: %s\npmemaddr2: %s", (char*)pmemaddr, (char*)pmemaddr2);
 	if (is_pmem){
 		pmem_persist(pmemaddr + 13, 14);
-		pmem_persist(pmemaddr2, mapped_len2);
+		//pmem_persist(pmemaddr2, mapped_len2);
+		testfunc(pmemaddr2, mapped_len2);
 		pmem_persist(pmemaddr3, mapped_len3);
 		for(int i = 0; i<4; i++){
 			//pmem_persist(pmemaddr, mapped_len);

@@ -12,10 +12,12 @@
 #include <unistd.h>
 
 #define MAX_PATH_LENGTH 256
-#define CACHE_LINE_SIZE 8
+#define CACHE_LINE_SIZE 64
 
 #define MAX_FILE_LENGTH 256
 #define MAX_LINE_LENGTH 256
+
+#define LIBPMEMMAP_ALIGN_VAL 0x200000
 
 typedef struct _pmemaddrset PMEMaddrset;
 
@@ -74,8 +76,8 @@ void plus_persistcount(char *file, int line){
     if(matched == 0){
         file_list[file_id] = (char *)malloc(strlen(file) + 1);
         strcpy(file_list[file_id], file);
-        persist_line_list[file_id][file_id].line = line;
-        persist_line_list[file_id][file_id].count = 1;
+        persist_line_list[file_id][0].line = line;
+        persist_line_list[file_id][0].count = 1;
         return;
     }
 
@@ -170,7 +172,7 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
 
     PMEMaddrset *addrset = (PMEMaddrset *)malloc(sizeof(PMEMaddrset));
     addrset->orig_addr = orig_pmem_map_file(path, len, flags, mode, mapped_lenp, is_pmemp);
-    addrset->fake_addr = malloc(len);
+    addrset->fake_addr = aligned_alloc(LIBPMEMMAP_ALIGN_VAL, len);
     addrset->next = NULL;
     addrset->prev = tail;
     addrset->len = len;
@@ -213,7 +215,6 @@ void pmem_persist(const void *addr, size_t len, char* file, int line){
             int tmp = d % CACHE_LINE_SIZE;
             int tmp2 = CACHE_LINE_SIZE - ((len + tmp) % CACHE_LINE_SIZE);
             memcpy(target_addr - tmp, addr - tmp, len + tmp + tmp2);//拡大しないといけない
-            printf("pmem_persist, memcpy, set->orig_addr: %s\n", (char*)set->orig_addr);
             orig_pmem_persist(target_addr, len);
             plus_persistcount(file, line);
             printf("pmem_persist file:%s, line:%d\n", file, line);
@@ -273,7 +274,7 @@ void rand_memcpy(void *dest, const void *src, size_t n, int d, PMEMaddrset *set)
     i = d % CACHE_LINE_SIZE;
     printf("i : %d\n", i);
     if(i % CACHE_LINE_SIZE !=0){
-        printf("first\n");
+        //printf("first\n");
         if(rand() % 2 == 0){
             memcpy(dest - i, src - i, CACHE_LINE_SIZE);
         }
@@ -293,7 +294,7 @@ void rand_memcpy(void *dest, const void *src, size_t n, int d, PMEMaddrset *set)
     int remainder = n - i; 
     printf("2i : %d, remainder : %d\n", i, remainder);
     if(remainder % CACHE_LINE_SIZE != 0){
-        printf("remainder\n");
+        //printf("remainder\n");
         if(rand() % 2 == 0){
             if(d + i + CACHE_LINE_SIZE < set->len)
                 memcpy(dest + i, src + i, remainder);
@@ -315,8 +316,6 @@ void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d){
         fd = open(generated_path, O_CREAT|O_RDWR, 0666);
         ftruncate(fd, set->len);
         new_file = mmap(NULL, set->len, PROT_WRITE, MAP_SHARED, fd, 0);
-
-        printf("set->fake_addr: %s\n", (char*)set->fake_addr);
 
         memcpy(new_file, set->orig_addr, set->len);
         rand_memcpy(new_file + d, set->fake_addr + d, n, d, set);
