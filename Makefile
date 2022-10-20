@@ -5,7 +5,6 @@ RUN_SRCS = libpmemtest.c libpmemtest2.c
 SRCS = wraptest.c
 OBJS = $(SRCS:.c=.o)
 SHARED = libwrappmem.so
-#OBJS = $(SRCS:.c=.o)
 
 $(TARGET): $(SHARED)
 	$(CC) -o $@ $(RUN_SRCS) $(CFLALGS)

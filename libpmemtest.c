@@ -52,12 +52,13 @@ void write_hello_string (char *buf, char *path)
 	printf("is_pmem:%d\n", is_pmem);
 	printf("pmemaddr: %p, pmemaddr2: %p, pmemaddr3: %p\n",pmemaddr, pmemaddr2, pmemaddr3);
 	if (is_pmem){
-		pmem_persist(pmemaddr + 13, 14);
+		pmem_persist(pmemaddr, mapped_len);
+		//pmem_persist(pmemaddr + 13, 14);
 		//pmem_persist(pmemaddr2, mapped_len2);
 		testfunc(pmemaddr2, mapped_len2);
 		pmem_persist(pmemaddr3, mapped_len3);
 		for(int i = 0; i<4; i++){
-			//pmem_persist(pmemaddr, mapped_len);
+			pmem_persist(pmemaddr, mapped_len);
 		}
 	}
 	else

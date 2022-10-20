@@ -45,7 +45,7 @@ char *file_list[MAX_FILE_LENGTH];
 //LINEinfo *(persist_line_list[MAX_LINE_LENGTH])[MAX_FILE_LENGTH]; //ポインタ配列 ポインタはpersist_line_list[MAX_LINE_LENGTH]のアドレスを指す
 LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
-void rand_memcpy(void *dest, const void *src, size_t n, int d, PMEMaddrset *set);
+void rand_memcpy(void *dest, const void *src, size_t n, PMEMaddrset *set);
 void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);
 
 void read_persistcountfile();
@@ -54,7 +54,7 @@ __attribute__ ((constructor))
 static void constructor () {
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
-    //read_persistcountfile();
+    read_persistcountfile();
 }
 
 void plus_persistcount(char *file, int line){
@@ -103,26 +103,28 @@ void read_persistcountfile(){
     int file_id;
     int file_name_len;
     char *tmp = (char *)malloc(MAX_FILE_LENGTH + 1);
+    int r, offset;
 
     while(1){
-        int offset = lseek(fd, 0, SEEK_CUR);
+        offset = lseek(fd, 0, SEEK_CUR);
         printf("%d offset: %d\n", __LINE__, offset);
         pread(fd, tmp, MAX_FILE_LENGTH, offset);
         char *new_line_ptr = strchr(tmp, '\n');
-        tmp[new_line_ptr - tmp + 1] = '\0'; //get file name
-        lseek(fd, new_line_ptr - tmp + 1, SEEK_CUR);
+        tmp[new_line_ptr - tmp] = '\0'; //get file name
+        offset = lseek(fd, new_line_ptr - tmp + 1, SEEK_CUR);
         printf("%d tmp: %s\n", __LINE__, tmp);
         while(1){
-            int r = read(fd, tmp, 22); // int digit + _ + int digit
-            tmp[22] = '\0';
-            printf("%d tmp: %s", __LINE__, tmp);
+            r = pread(fd, tmp, 21, offset); // int digit + _ + int digit
             if((r == 0) || (tmp[0] == '_')){
-                lseek(fd, -22, SEEK_CUR);
                 break;
             }
+            tmp[21] = '\0';
+            printf("%d tmp: %s, r: %d\n", __LINE__, tmp, r);
+            
+            offset = lseek(fd, 22, SEEK_CUR);
         }
         
-        break;
+        if(r == 0)  break;
     }
 
     free(tmp);
@@ -209,7 +211,7 @@ void pmem_persist(const void *addr, size_t len, char* file, int line){
             uintptr_t d = addr - set->fake_addr;
             void *target_addr = (void *)(set->orig_addr + d);
             printf("d : %ld\n", d);
-            //rand_memcpy(set->orig_addr, set->fake_addr, len, d);
+            //rand_memcpy(set->orig_addr, set->fake_addr, len, set);
             rand_file_generate(set, len, d);
 
             int tmp = d % CACHE_LINE_SIZE;
@@ -267,8 +269,9 @@ int pmem_unmap(void *addr, size_t len){
     return -1;
 }
 
-void rand_memcpy(void *dest, const void *src, size_t n, int d, PMEMaddrset *set){
+void rand_memcpy(void *dest, const void *src, size_t n, PMEMaddrset *set){
     // srand((unsigned int)time(NULL));
+    int d = src - set->fake_addr;
 
     int i;
     i = d % CACHE_LINE_SIZE;
@@ -297,9 +300,9 @@ void rand_memcpy(void *dest, const void *src, size_t n, int d, PMEMaddrset *set)
         //printf("remainder\n");
         if(rand() % 2 == 0){
             if(d + i + CACHE_LINE_SIZE < set->len)
-                memcpy(dest + i, src + i, remainder);
-            else{
                 memcpy(dest + i, src + i, CACHE_LINE_SIZE);
+            else{
+                memcpy(dest + i, src + i, remainder);
             }
         }
     }
@@ -318,7 +321,7 @@ void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d){
         new_file = mmap(NULL, set->len, PROT_WRITE, MAP_SHARED, fd, 0);
 
         memcpy(new_file, set->orig_addr, set->len);
-        rand_memcpy(new_file + d, set->fake_addr + d, n, d, set);
+        rand_memcpy(new_file + d, set->fake_addr + d, n, set);
 
         munmap(new_file, set->len);
         close(fd);
