@@ -105,23 +105,33 @@ void read_persistcountfile(){
     char *tmp = (char *)malloc(MAX_FILE_LENGTH + 1);
     int r, offset;
 
-    while(1){
+    for(int i=0;;i++){
         offset = lseek(fd, 0, SEEK_CUR);
-        printf("%d offset: %d\n", __LINE__, offset);
+        //printf("%d offset: %d\n", __LINE__, offset);
         pread(fd, tmp, MAX_FILE_LENGTH, offset);
         char *new_line_ptr = strchr(tmp, '\n');
         tmp[new_line_ptr - tmp] = '\0'; //get file name
         offset = lseek(fd, new_line_ptr - tmp + 1, SEEK_CUR);
         printf("%d tmp: %s\n", __LINE__, tmp);
-        while(1){
+
+        file_list[i] = malloc(strlen(tmp + 1) + 1);//skip '_'
+        strcpy(file_list[i], tmp + 1);
+        printf("%d file_list[%d]: %send\n", __LINE__, i, file_list[i]);
+
+        for (int j=0;;j++){
             r = pread(fd, tmp, 21, offset); // int digit + _ + int digit
             if((r == 0) || (tmp[0] == '_')){
                 break;
             }
             tmp[21] = '\0';
             printf("%d tmp: %s, r: %d\n", __LINE__, tmp, r);
-            
             offset = lseek(fd, 22, SEEK_CUR);
+
+            tmp[10] = '\0';
+
+            persist_line_list[i][j].line = atoi(tmp);
+            persist_line_list[i][j].count = atoi(tmp + 11);
+            printf("%d persist_line_list[%d][%d] line: %d, count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count);
         }
         
         if(r == 0)  break;
