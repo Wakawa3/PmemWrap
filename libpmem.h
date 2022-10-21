@@ -70,12 +70,16 @@ void pmem_flush(const void *addr, size_t len);
 void pmem_deep_flush(const void *addr, size_t len);
 int pmem_deep_drain(const void *addr, size_t len);
 int pmem_deep_persist(const void *addr, size_t len);
-void pmem_drain(void);
+//
+void pmem_drain(char* file, int line);
+//
 int pmem_has_hw_drain(void);
 
-void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len);
-void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len);
-void *pmem_memset_persist(void *pmemdest, int c, size_t len);
+//
+void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len, char* file, int line);
+void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len, char* file, int line);
+void *pmem_memset_persist(void *pmemdest, int c, size_t len, char* file, int line);
+//
 void *pmem_memmove_nodrain(void *pmemdest, const void *src, size_t len);
 void *pmem_memcpy_nodrain(void *pmemdest, const void *src, size_t len);
 void *pmem_memset_nodrain(void *pmemdest, int c, size_t len);
@@ -131,5 +135,9 @@ const wchar_t *pmem_errormsgW(void);
 }
 #endif
 
-#define pmem_persist(addr, len) pmem_persist(addr, len, __FILE__, __LINE__);
+#define pmem_persist(addr, len) pmem_persist(addr, len, __FILE__, __LINE__)
+#define pmem_memmove_persist(pmemdest, src, len) pmem_memmove_persist(pmemdest, src, len, __FILE__, __LINE__)
+#define pmem_memcpy_persist(pmemdest, src, len) pmem_memcpy_persist(pmemdest, src, len, __FILE__, __LINE__)
+#define pmem_memset_persist(pmemdest, c, len) pmem_memset_persist(pmemdest, c, len, __FILE__, __LINE__)
+#define pmem_drain() pmem_drain(__FILE__, __LINE__)
 #endif	/* libpmem.h */

@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define MAX_PATH_LENGTH 256
-#define CACHE_LINE_SIZE 64
+#define CACHE_LINE_SIZE 8
 
 #define MAX_FILE_LENGTH 256
 #define MAX_LINE_LENGTH 256
@@ -34,6 +34,19 @@ struct _pmemaddrset {
 PMEMaddrset *head = NULL;
 PMEMaddrset *tail = NULL;
 
+typedef struct _waitdrain_addrset Waitdrain_addrset;
+
+struct _waitdrain_addrset{
+    void *addr;
+    Waitdrain_addrset *next;
+    Waitdrain_addrset *prev;
+    int len;
+    PMEMaddrset *set;
+};
+
+Waitdrain_addrset *w_head = NULL;
+Waitdrain_addrset *w_tail = NULL;
+
 typedef struct _line_info LINEinfo;
 
 struct _line_info{
@@ -50,11 +63,14 @@ void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);
 
 void read_persistcountfile();
 
+void pmem_flush(const void *addr, size_t len);
+void pmem_drain(char* file, int line);
+
 __attribute__ ((constructor))
 static void constructor () {
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
-    read_persistcountfile();
+    //read_persistcountfile();
 }
 
 void plus_persistcount(char *file, int line){
@@ -205,38 +221,45 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
     return addrset->fake_addr;
 }
 
-void pmem_persist(const void *addr, size_t len, char* file, int line){
+void pmem_persist(const void *addr, size_t len, char* file, int line){//flush,drainを使う
     printf("wrap pmem_persist\n");
-    void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_map_file");
+    pmem_flush(addr, len);
+    pmem_drain(file, line);
 
-    if(head == NULL){
-        orig_pmem_persist(addr, len);
-        return;
-    }
+    // void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_map_file");
 
-    PMEMaddrset *set = head;
+    // if(head == NULL){
+    //     orig_pmem_persist(addr, len);
+    //     return;
+    // }
 
-    while(set != NULL){
-        if((addr >= set->fake_addr) && (addr < set->fake_addr + set->len)){
-            uintptr_t d = addr - set->fake_addr;
-            void *target_addr = (void *)(set->orig_addr + d);
-            printf("d : %ld\n", d);
-            //rand_memcpy(set->orig_addr, set->fake_addr, len, set);
-            rand_file_generate(set, len, d);
+    // PMEMaddrset *set = head;
 
-            int tmp = d % CACHE_LINE_SIZE;
-            int tmp2 = CACHE_LINE_SIZE - ((len + tmp) % CACHE_LINE_SIZE);
-            memcpy(target_addr - tmp, addr - tmp, len + tmp + tmp2);//拡大しないといけない
-            orig_pmem_persist(target_addr, len);
-            plus_persistcount(file, line);
-            printf("pmem_persist file:%s, line:%d\n", file, line);
-            return;
-        }
-        set = set->next;
-    }
+    // while(set != NULL){
+    //     if((addr >= set->fake_addr) && (addr < set->fake_addr + set->len)){
+    //         uintptr_t d = addr - set->fake_addr;
+    //         void *target_addr = (void *)(set->orig_addr + d);
+    //         printf("d : %ld\n", d);
+    //         //rand_memcpy(set->orig_addr + d, set->fake_addr + d, len, set);
+            
+    //         rand_file_generate(set, len, d);
 
-    fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
-    return;
+    //         int tmp = d % CACHE_LINE_SIZE;
+    //         int tmp2 = CACHE_LINE_SIZE - ((len + tmp) % CACHE_LINE_SIZE);
+    //         memcpy(target_addr - tmp, addr - tmp, len + tmp + tmp2);//拡大しないといけない
+    //         orig_pmem_persist(target_addr, len);
+
+    //         //abort();
+
+    //         plus_persistcount(file, line);
+    //         printf("pmem_persist file:%s, line:%d\n", file, line);
+    //         return;
+    //     }
+    //     set = set->next;
+    // }
+
+    // fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+    // return;
 }
 
 int pmem_unmap(void *addr, size_t len){
@@ -358,4 +381,141 @@ static void destructor () {
 //     return orig_util_map_sync(addr, len, proto, flags, fd, offset, map_sync);
 // }
 
+void add_waitdrainlist(const void *addr, size_t len){
+    PMEMaddrset *tmp = head;
+    while(tmp != NULL){
+        if((addr >= tmp->fake_addr) && (addr + len <= tmp->fake_addr + tmp->len)){
+            break;
+        }
+        else if((addr >= tmp->fake_addr) && (addr <= tmp->fake_addr + tmp->len) && (addr + len > tmp->fake_addr + tmp->len)){
+            fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+        tmp = tmp->next;
+    }
 
+    if(tmp == NULL){
+        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
+    Waitdrain_addrset *w_tmp = w_head;
+    while(w_tmp != NULL){
+        w_tmp = w_tmp->next;
+    }
+
+    w_tmp = (Waitdrain_addrset *)malloc(sizeof(Waitdrain_addrset));
+    w_tmp->addr = (char *)addr;
+    w_tmp->len = len;
+    w_tmp->next = NULL;
+    w_tmp->prev = w_tail;
+
+    PMEMaddrset *set = head;
+    while(set != NULL){
+        if((addr >= set->fake_addr) && (addr < set->fake_addr + set->len)){
+            w_tmp->set = set;
+            break;
+        }
+        set = set->next;
+    }
+
+    if(set == NULL){
+        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
+    if(w_head == NULL){
+        w_head = w_tmp;
+    }
+    else{
+        w_tail->next = w_tmp;
+    }
+    w_tail = w_tmp;
+}
+
+void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len, char* file, int line){
+    printf("wrap pmem_memmove_persist\n");
+    void *ret = memmove(pmemdest, src, len);
+    pmem_persist(pmemdest, len, file, line);
+    return ret;
+}
+
+void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len, char* file, int line){
+    printf("wrap pmem_memcpy_persist\n");
+    void *ret = memcpy(pmemdest, src, len);
+    pmem_persist(pmemdest, len, file, line);
+    return ret;
+}
+
+void *pmem_memset_persist(void *pmemdest, int c, size_t len, char* file, int line){
+    printf("wrap pmem_memset_persist\n");
+    void *ret = memset(pmemdest, c, len);
+    pmem_persist(pmemdest, len, file, line);
+    return ret;
+}
+
+void *pmem_memmove_nodrain(void *pmemdest, const void *src, size_t len){
+    printf("wrap pmem_memmove_nodrain\n");
+    void *ret = memmove(pmemdest, src, len);
+    add_waitdrainlist(pmemdest, len);
+    return ret;
+}
+
+void *pmem_memcpy_nodrain(void *pmemdest, const void *src, size_t len){
+    printf("wrap pmem_memcpy_nodrain\n");
+    void *ret = memcpy(pmemdest, src, len);
+    add_waitdrainlist(pmemdest, len);
+    return ret;
+}
+
+void *pmem_memset_nodrain(void *pmemdest, int c, size_t len){
+    printf("wrap pmem_memset_nodrain\n");
+    void *ret = memset(pmemdest, c, len);
+    add_waitdrainlist(pmemdest, len);
+    return ret;
+}
+
+void pmem_flush(const void *addr, size_t len){
+    printf("wrap pmem_flush\n");
+    add_waitdrainlist(addr, len);
+}
+
+void pmem_drain(char* file, int line){//waitdrainに入れたものだけをdrain
+    printf("wrap pmem_drain\n");
+    
+    void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_map_file");
+
+    Waitdrain_addrset *w_set = w_head;
+
+    while(w_set != NULL){
+        uintptr_t d = w_set->addr - w_set->set->fake_addr;
+        void *target_addr = (void *)(w_set->set->orig_addr + d);
+        printf("d : %ld\n", d);
+
+        rand_memcpy(target_addr, w_set->set->fake_addr + d, w_set->len, w_set->set);//範囲が重なっているとコピー確率が変わってしまう？
+
+        // unsigned long int nth_power = CACHE_LINE_SIZE;
+        // uintptr_t real_len = ((uintptr_t)w_set->addr + w_set->len + (nth_power - 1)) & ~(nth_power - 1) - (uintptr_t)w_set->addr & ~(nth_power - 1); 
+        // memcpy(target_addr & ~(nth_power - 1), w_set->addr & ~(nth_power - 1), real_len);
+
+        //memcpyを実際に行う場合使用 行わない場合はコメントアウト
+        int tmp = d % CACHE_LINE_SIZE;
+        int tmp2 = CACHE_LINE_SIZE - ((w_set->len + tmp) % CACHE_LINE_SIZE);
+        memcpy(target_addr - tmp, w_set->addr - tmp, w_set->len + tmp + tmp2);
+        //ここまで
+
+        orig_pmem_persist(target_addr, w_set->len);
+
+        Waitdrain_addrset *tmp_w_set = w_set;
+        w_set = w_set->next;
+        free(tmp_w_set);
+    }
+    w_head = NULL;
+    w_tail = NULL;
+
+    // abort();
+
+    plus_persistcount(file, line);
+    printf("pmem_drain file:%s, line:%d\n", file, line);
+    return;
+}
