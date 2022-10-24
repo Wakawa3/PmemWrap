@@ -138,8 +138,6 @@ void write_KVS (char *key, int value)
     printf("number : %d\n", D_RO(root)->number);
 
 	pmemobj_close(pop);	
-
-    pmem_persist(NULL, 0);
 		
 	return;
 }
