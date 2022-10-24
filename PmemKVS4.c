@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libpmemobj.h>
+#include "libpmem.h"
 //#include "pmemopenwrap.h"
 
 // Name of our layout in the pool
@@ -137,6 +138,8 @@ void write_KVS (char *key, int value)
     printf("number : %d\n", D_RO(root)->number);
 
 	pmemobj_close(pop);	
+
+    pmem_persist(NULL, 0);
 		
 	return;
 }
