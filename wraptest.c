@@ -60,6 +60,12 @@ char *file_list[MAX_FILE_LENGTH];
 //LINEinfo *(persist_line_list[MAX_LINE_LENGTH])[MAX_FILE_LENGTH]; //ポインタ配列 ポインタはpersist_line_list[MAX_LINE_LENGTH]のアドレスを指す
 LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
+void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
+void (*orig_pmem_persist)(const void*, size_t);
+int (*orig_pmem_unmap)(void*, size_t);
+void (*orig_pmem_flush)(const void *, size_t);
+void (*orig_pmem_drain)();
+
 void rand_memcpy(void *dest, const void *src, size_t n, PMEMaddrset *set);
 void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);
 
@@ -77,6 +83,11 @@ static void constructor () {
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
     //read_persistcountfile();
+    orig_pmem_map_file = dlsym(RTLD_NEXT, "pmem_map_file");
+    orig_pmem_persist = dlsym(RTLD_NEXT, "pmem_persist");
+    orig_pmem_unmap = dlsym(RTLD_NEXT, "pmem_unmap");
+    orig_pmem_flush = dlsym(RTLD_NEXT, "pmem_flush");
+    orig_pmem_drain = dlsym(RTLD_NEXT, "pmem_drain");
 }
 
 void plus_persistcount(char *file, int line){
@@ -202,7 +213,7 @@ void write_persistcountfile(){
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp){
     srand((unsigned int)time(NULL));
 
-    void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*) = dlsym(RTLD_NEXT, "pmem_map_file");
+    //void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*) = dlsym(RTLD_NEXT, "pmem_map_file");
 
     PMEMaddrset *addrset = (PMEMaddrset *)malloc(sizeof(PMEMaddrset));
     addrset->orig_addr = orig_pmem_map_file(path, len, flags, mode, mapped_lenp, is_pmemp);
@@ -238,7 +249,7 @@ void pmem_persist(const void *addr, size_t len){
     pmem_flush(addr, len);
     pmem_drain();
 
-    // void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_map_file");
+    // void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_persist");
 
     // if(head == NULL){
     //     orig_pmem_persist(addr, len);
@@ -276,7 +287,7 @@ void pmem_persist(const void *addr, size_t len){
 
 int pmem_unmap(void *addr, size_t len){
     printf("wrap pmem_unmap\n");
-    int (*orig_pmem_unmap)(void*, size_t) = dlsym(RTLD_NEXT, "pmem_unmap");
+    //int (*orig_pmem_unmap)(void*, size_t) = dlsym(RTLD_NEXT, "pmem_unmap");
 
     if(head == NULL){
         return orig_pmem_unmap(addr, len);
@@ -610,7 +621,7 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     //     return;
     // }
     
-    void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_map_file");
+    //void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_persist");
 
     Waitdrain_addrset *w_set = w_head;
 
@@ -631,7 +642,8 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
         memcpy(target_addr - tmp, w_set->addr - tmp, w_set->len + tmp + tmp2);
         //ここまで
 
-        orig_pmem_persist(target_addr, w_set->len);
+        orig_pmem_flush(target_addr, w_set->len);
+        orig_pmem_drain();
 
         Waitdrain_addrset *tmp_w_set = w_set;
         w_set = w_set->next;
