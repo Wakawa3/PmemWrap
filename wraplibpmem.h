@@ -71,8 +71,8 @@ void pmem_wrappersist(const void *addr, size_t len, char* file, int line);
 void pmem_persist(const void *addr, size_t len);
 int pmem_unmap(void *addr, size_t len);
 
-void rand_memcpy(void *dest, const void *src, size_t n, PMEMaddrset *set);
-void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);//現在不使用
+void rand_memcpy(PMEMaddrset *set);
+// void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);//現在不使用
 
 void add_waitdrainlist(const void *addr, size_t len);
 
