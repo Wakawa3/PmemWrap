@@ -11,6 +11,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "wraplibpmem.h"
+/*
 #define MAX_PATH_LENGTH 256
 #define CACHE_LINE_SIZE 64
 
@@ -77,6 +79,8 @@ void pmem_persist(const void *addr, size_t len);
 void pmem_flush(const void *addr, size_t len);
 void pmem_wrapdrain(char* file, int line);
 void pmem_drain();
+
+*/
 
 __attribute__ ((constructor))
 static void constructor () {
@@ -149,7 +153,7 @@ void read_persistcountfile(){
 
         file_list[i] = malloc(strlen(tmp + 1) + 1);//skip '_'
         strcpy(file_list[i], tmp + 1);
-        printf("%d file_list[%d]: %send\n", __LINE__, i, file_list[i]);
+        printf("%d file_list[%d]: %s\n", __LINE__, i, file_list[i]);
 
         for (int j=0;;j++){
             r = pread(fd, tmp, 21, offset); // int digit + _ + int digit
@@ -497,7 +501,6 @@ void *pmem_wrapmemmove(void *pmemdest, const void *src, size_t len, unsigned fla
     return ret;
 }
 
-
 void *pmem_wrapmemcpy(void *pmemdest, const void *src, size_t len, unsigned flags, char* file, int line){
     printf("wrap pmem_wrapmemcpy\n");
     void *ret;
@@ -533,7 +536,6 @@ void *pmem_memmove(void *pmemdest, const void *src, size_t len, unsigned flags){
     }
     return ret;
 }
-
 
 void *pmem_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags){
     printf("wrap pmem_memcpy\n");
@@ -584,8 +586,6 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     //     return;
     // }
     
-    //void (*orig_pmem_persist)(const void*, size_t) = dlsym(RTLD_NEXT, "pmem_persist");
-
     Waitdrain_addrset *w_set = w_head;
 
     while(w_set != NULL){
@@ -599,7 +599,7 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
         // uintptr_t real_len = ((uintptr_t)w_set->addr + w_set->len + (nth_power - 1)) & ~(nth_power - 1) - (uintptr_t)w_set->addr & ~(nth_power - 1); 
         // memcpy(target_addr & ~(nth_power - 1), w_set->addr & ~(nth_power - 1), real_len);
 
-        //memcpyを実際に行う場合使用 行わない場合はコメントアウト 64ビットのビット演算でやったほうがいい
+        //rand_memcpyを適用させておく場合はコメントアウト 64ビットのビット演算でやったほうがいい
         int tmp = d % CACHE_LINE_SIZE;
         int tmp2 = CACHE_LINE_SIZE - ((w_set->len + tmp) % CACHE_LINE_SIZE);
         memcpy(target_addr - tmp, w_set->addr - tmp, w_set->len + tmp + tmp2);
@@ -616,6 +616,7 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
 
     orig_pmem_drain();
 
+    //rand_memcpyを適用させている場合はコメントアウトを外す。
     //abort();
     
     return;
