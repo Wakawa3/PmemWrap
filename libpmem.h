@@ -145,7 +145,7 @@ const wchar_t *pmem_errormsgW(void);
 }
 #endif
 
-#define pmem_persist(addr, len) pmem_wrappersist(addr, len, __FILE__, __LINE__)
+#define pmem_persist(addr, len) pmem_wrappersist((addr), (len), __FILE__, __LINE__)
 #define pmem_memmove_persist(pmemdest, src, len) pmem_wrapmemmove_persist(pmemdest, src, len, __FILE__, __LINE__)
 #define pmem_memcpy_persist(pmemdest, src, len) pmem_wrapmemcpy_persist(pmemdest, src, len, __FILE__, __LINE__)
 #define pmem_memset_persist(pmemdest, c, len) pmem_wrapmemset_persist(pmemdest, c, len, __FILE__, __LINE__)

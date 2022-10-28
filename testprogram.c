@@ -5,29 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libpmem.h>
+//#include <dlfcn.h>
 
 #define PMEM_LEN 1024
 
 int main(int argc, char *argv[]){
-    //char buf[] = "/mnt/pmem0/p";
     char *path = argv[2];
-    // path = buf;
-    // size_t mapped_len;
-    // int is_pmem;
-
-    // //struct teststruct *pmemaddr;
-    // char *pmemaddr;
-
-    // if ((pmemaddr = (char *)pmem_map_file(path, PMEM_LEN, PMEM_FILE_CREATE,
-	// 			0666, &mapped_len, &is_pmem)) == NULL) {
-    //     perror("pmem_map_file");
-	// 	exit(1);
-    // }
 
     void *pmemaddr;
 	size_t mapped_len;
 	int is_pmem;
 	
+    printf("path: %s\n", path);
+
 	/* create a pmem file and memory map it */
 	if ((pmemaddr = (void *)pmem_map_file(path, PMEM_LEN, PMEM_FILE_CREATE,
 				0666, &mapped_len, &is_pmem)) == NULL) {
@@ -49,8 +39,9 @@ int main(int argc, char *argv[]){
         // abort();
         if (is_pmem)
             pmem_persist(pmemaddr, mapped_len);
-        else
-            pmem_msync(pmemaddr, mapped_len);
+        // else
+        //     pmem_msync(pmemaddr, mapped_len);
+        // pmem_is_pmem(pmemaddr, PMEM_LEN);
     }
     else{
         if((*(long int *)pmemaddr == 0) && *(long int *)(pmemaddr + 64) == 0){

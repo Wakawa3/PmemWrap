@@ -87,11 +87,25 @@ static void constructor () {
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
     //read_persistcountfile();
-    orig_pmem_map_file = dlsym(RTLD_NEXT, "pmem_map_file");
+
+    void *dlopen_val = dlopen("/home/satoshi/testlib/lib/libpmem.so.1", RTLD_NOW);
+
+    if((orig_pmem_map_file = dlsym(dlopen_val, "pmem_map_file")) == NULL){
+        printf("orig_pmem_map_file: %p\n%s\n", orig_pmem_map_file, dlerror());
+        exit(1);
+    }
+
     //orig_pmem_persist = dlsym(RTLD_NEXT, "pmem_persist");
-    orig_pmem_unmap = dlsym(RTLD_NEXT, "pmem_unmap");
-    orig_pmem_flush = dlsym(RTLD_NEXT, "pmem_flush");
-    orig_pmem_drain = dlsym(RTLD_NEXT, "pmem_drain");
+    if((orig_pmem_unmap = dlsym(dlopen_val, "pmem_unmap")) == NULL){
+        printf("orig_pmem_unmap: %p\n%s\n", orig_pmem_map_file, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_flush = dlsym(dlopen_val, "pmem_flush")) == NULL){
+        printf("orig_pmem_unmap: %p\n%s\n", orig_pmem_map_file, dlerror());
+        exit(1);
+    }
+    orig_pmem_drain = dlsym(dlopen_val, "pmem_drain");
 }
 
 void plus_persistcount(char *file, int line){
@@ -212,8 +226,18 @@ void write_persistcountfile(){
     close(fd);
 }
 
+void reset_persistcount(){
+    for(int i = 0; i<MAX_FILE_LENGTH && file_list[i] != NULL; i++){
+        for(int j = 0; j<MAX_LINE_LENGTH; j++){
+            persist_line_list[i][j].count = 0;
+        }
+    }
+}
+
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp){
     srand((unsigned int)time(NULL));
+    printf("len: %lu, flags: %d, mode: %u\n",len, flags, mode);
+    printf("path: %s\n", path);
 
     //void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*) = dlsym(RTLD_NEXT, "pmem_map_file");
 
@@ -587,6 +611,8 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     // }
     
     Waitdrain_addrset *w_set = w_head;
+
+    int abortflag = 0;
 
     while(w_set != NULL){
         uintptr_t d = w_set->addr - w_set->set->fake_addr;

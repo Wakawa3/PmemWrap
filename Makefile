@@ -10,7 +10,7 @@ $(TARGET): $(SHARED)
 	$(CC) -o $@ $(RUN_SRCS) $(CFLALGS)
 
 $(SHARED): $(OBJS)
-	$(CC) -shared -o $(SHARED) $(OBJS) -g -O0
+	$(CC) -shared -o $(SHARED) $(OBJS) -ldl -g -O0
 
 $(OBJS): $(SRCS)
 	$(CC) -c -fPIC $(SRCS) -o $(OBJS) -g -O0

@@ -64,6 +64,7 @@ void (*orig_pmem_drain)();
 void plus_persistcount(char *file, int line);
 void read_persistcountfile();
 void write_persistcountfile();
+void reset_persistcount();
 
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 void pmem_wrappersist(const void *addr, size_t len, char* file, int line);
