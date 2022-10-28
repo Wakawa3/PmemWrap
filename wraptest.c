@@ -191,7 +191,7 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
     }
     tail = addrset;
 
-    return addrset->fake_addr;
+    return addrset->orig_addr;
 }
 
 void pmem_wrappersist(const void *addr, size_t len, char* file, int line){
@@ -215,7 +215,6 @@ int pmem_unmap(void *addr, size_t len){
     }
 
     PMEMaddrset *set = head;
-    void *orig_addr;
 
     while(set != NULL){
         if(set->fake_addr == addr){
@@ -235,10 +234,8 @@ int pmem_unmap(void *addr, size_t len){
                 set->prev->next = set->next;
                 set->next->prev = set->prev;
             }
-            memcpy(set->orig_addr, set->fake_addr, len);
-            orig_addr = set->orig_addr;
             free(set);
-            return orig_pmem_unmap(orig_addr, len);
+            return orig_pmem_unmap(addr, len);
         }
         set = set->next;
     }
@@ -324,12 +321,12 @@ void rand_memcpy(PMEMaddrset *set){
 __attribute__ ((destructor))
 static void destructor () {
     printf("destructor\n");
-    PMEMaddrset *set = head;
+    // PMEMaddrset *set = head;
 
-    while(set != NULL){
-        memcpy(set->orig_addr, set->fake_addr, set->len);
-        set = set->next;
-    }
+    // while(set != NULL){
+    //     memcpy(set->orig_addr, set->fake_addr, set->len);
+    //     set = set->next;
+    // }
 
     write_persistcountfile();
 }
@@ -340,19 +337,19 @@ static void destructor () {
 // }
 
 void add_waitdrainlist(const void *addr, size_t len){
-    PMEMaddrset *tmp = head;
-    while(tmp != NULL){
-        if((addr >= tmp->fake_addr) && (addr + len <= tmp->fake_addr + tmp->len)){
+    PMEMaddrset *set = head;
+    while(set != NULL){
+        if((addr >= set->orig_addr) && (addr + len <= set->orig_addr + set->len)){
             break;
         }
-        else if((addr >= tmp->fake_addr) && (addr <= tmp->fake_addr + tmp->len) && (addr + len > tmp->fake_addr + tmp->len)){
+        else if((addr >= set->orig_addr) && (addr <= set->orig_addr + set->len) && (addr + len > set->orig_addr + set->len)){
             fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
             exit(1);
         }
-        tmp = tmp->next;
+        set = set->next;
     }
 
-    if(tmp == NULL){
+    if(set == NULL){
         //fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
         printf("not registered\n");
         orig_pmem_flush(addr, len);
@@ -362,25 +359,17 @@ void add_waitdrainlist(const void *addr, size_t len){
 
     //flushed = 1;
 
-    Waitdrain_addrset *w_tmp = w_head;
-    while(w_tmp != NULL){
-        w_tmp = w_tmp->next;
+    Waitdrain_addrset *w_set = w_head;
+    while(w_set != NULL){
+        w_set = w_set->next;
     }
 
-    w_tmp = (Waitdrain_addrset *)malloc(sizeof(Waitdrain_addrset));
-    w_tmp->addr = (char *)addr;
-    w_tmp->len = len;
-    w_tmp->next = NULL;
-    w_tmp->prev = w_tail;
-
-    PMEMaddrset *set = head;
-    while(set != NULL){
-        if((addr >= set->fake_addr) && (addr < set->fake_addr + set->len)){
-            w_tmp->set = set;
-            break;
-        }
-        set = set->next;
-    }
+    w_set = (Waitdrain_addrset *)malloc(sizeof(Waitdrain_addrset));
+    w_set->addr = (char *)addr;
+    w_set->len = len;
+    w_set->next = NULL;
+    w_set->prev = w_tail;
+    w_set->set = set;
 
     if(set == NULL){
         fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
@@ -388,12 +377,12 @@ void add_waitdrainlist(const void *addr, size_t len){
     }
 
     if(w_head == NULL){
-        w_head = w_tmp;
+        w_head = w_set;
     }
     else{
-        w_tail->next = w_tmp;
+        w_tail->next = w_set;
     }
-    w_tail = w_tmp;
+    w_tail = w_set;
 }
 
 void *pmem_wrapmemmove_persist(void *pmemdest, const void *src, size_t len, char* file, int line){
@@ -540,12 +529,11 @@ void pmem_wrapdrain(char* file, int line){
     printf("wrap pmem_wrapdrain\n");
     pmem_drain();
 
-    printf("test\n");
-    printf("test1 %p, %p\n", file, &line);
-    printf("test %s, %d\n", file, line);
     plus_persistcount(file, line);
     printf("pmem_wrapdrain file:%s, line:%d\n", file, line);
 }
+
+//int count = 0;
 
 void pmem_drain(){//waitdrainに入れたものだけをdrain
     printf("wrap pmem_drain\n");
@@ -558,16 +546,20 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     
     Waitdrain_addrset *w_set = w_head;
 
+    //count++;
     int abortflag = 0;//abortするときはここを1に変更
-    int rand_memcpy_flag = 1;//rand_memcpyをする場合はここを1に変更
+
+    // if(count == 2){
+    //     abortflag = 1;
+    // }
+
+    int rand_memcpy_flag = 0;//rand_memcpyをする場合はここを1に変更
 
     if (abortflag == 0){
         while(w_set != NULL){
-            uintptr_t d = w_set->addr - w_set->set->fake_addr;
-            void *target_addr = (void *)(w_set->set->orig_addr + d);
+            uintptr_t d = w_set->addr - w_set->set->orig_addr;
+            void *target_addr = (void *)(w_set->set->fake_addr + d);
             printf("d : %ld\n", d);
-
-            // rand_memcpy(target_addr, w_set->set->fake_addr + d, w_set->len, w_set->set);//範囲が重なっているとコピー確率が変わってしまう？
 
             // unsigned long int nth_power = CACHE_LINE_SIZE;
             // uintptr_t real_len = ((uintptr_t)w_set->addr + w_set->len + (nth_power - 1)) & ~(nth_power - 1) - (uintptr_t)w_set->addr & ~(nth_power - 1); 
@@ -579,7 +571,7 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
             memcpy(target_addr - tmp, w_set->addr - tmp, w_set->len + tmp + tmp2);
             //ここまで
 
-            orig_pmem_flush(target_addr, w_set->len);
+            orig_pmem_flush(w_set->addr, w_set->len);
 
             Waitdrain_addrset *tmp_w_set = w_set;
             w_set = w_set->next;
@@ -591,13 +583,19 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
         orig_pmem_drain();
     }
     else{//abortflag == 1
-        if(rand_memcpy_flag == 1){
-            PMEMaddrset *set = head;
-            while(set != NULL){
+        PMEMaddrset *set = head;
+        while(set != NULL){
+            if(rand_memcpy_flag == 0){
+                memcpy(set->orig_addr, set->fake_addr, set->len);
+            }
+            else{
                 rand_memcpy(set);
-                set = set->next;
-            }  
+            }
+            orig_pmem_flush(set->orig_addr, set->len);
+            orig_pmem_drain();
+            set = set->next;
         }
+        
         abort();
     }
 

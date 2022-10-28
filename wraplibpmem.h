@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 #define MAX_PATH_LENGTH 256
-#define CACHE_LINE_SIZE 64
+#define CACHE_LINE_SIZE 8
 
 #define MAX_FILE_LENGTH 256
 #define MAX_LINE_LENGTH 256
