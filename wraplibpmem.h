@@ -23,6 +23,10 @@
 #define PMEM_FILE 0
 #define PMEMOBJ_FILE 1
 
+#define NORMAL_MEMCPY 0
+#define RAND_MEMCPY 1
+#define NO_MEMCPY 2
+
 #define LIBPMEMMAP_ALIGN_VAL 0x200000
 
 typedef struct _pmemaddrset PMEMaddrset;
@@ -33,9 +37,9 @@ struct _pmemaddrset {
     PMEMaddrset *next;
     PMEMaddrset *prev;
     int len;
-    int persist_count;
+    // int persist_count;
     int file_type;
-    char *orig_path;
+    // char *orig_path;
 };
 
 extern PMEMaddrset *head;
@@ -73,10 +77,15 @@ extern int (*orig_pmem_unmap)(void*, size_t);
 extern void (*orig_pmem_flush)(const void *, size_t);
 extern void (*orig_pmem_drain)();
 
+extern int abortflag;
+extern int memcpyflag;
+
 void plus_persistcount(char *file, int line);
 void read_persistcountfile();
 void write_persistcountfile();
 void reset_persistcount();
+
+PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type);
 
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 void pmem_wrappersist(const void *addr, size_t len, char* file, int line);

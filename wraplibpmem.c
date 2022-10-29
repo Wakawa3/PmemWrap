@@ -15,8 +15,13 @@ int (*orig_pmem_unmap)(void*, size_t);
 void (*orig_pmem_flush)(const void *, size_t);
 void (*orig_pmem_drain)();
 
+int abortflag = 0;
+int memcpyflag = 0;
+
 __attribute__ ((constructor))
 static void constructor () {
+    srand((unsigned int)time(NULL));
+
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
     //read_persistcountfile();
@@ -170,21 +175,15 @@ void reset_persistcount(){
     }
 }
 
-void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp){
-    srand((unsigned int)time(NULL));
-
+PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type){
     PMEMaddrset *addrset = (PMEMaddrset *)malloc(sizeof(PMEMaddrset));
-    addrset->orig_addr = orig_pmem_map_file(path, len, flags, mode, mapped_lenp, is_pmemp);
+    addrset->orig_addr = orig_addr;
     addrset->fake_addr = aligned_alloc(LIBPMEMMAP_ALIGN_VAL, len);
     addrset->next = NULL;
     addrset->prev = tail;
     addrset->len = len;
-    addrset->file_type = PMEM_FILE;
-    addrset->orig_path = (char *)malloc(strlen(path));
-    strcpy(addrset->orig_path, path);
-    addrset->persist_count = 0;
+    addrset->file_type = file_type;
     memcpy(addrset->fake_addr, addrset->orig_addr, len);
-    printf("wrap pmem_map_file\n");
 
     if(head == NULL){
         head = addrset;
@@ -193,6 +192,14 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
         tail->next = addrset;
     }
     tail = addrset;
+
+    return addrset;
+}
+
+void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp){
+    printf("wrap pmem_map_file\n");
+    
+    PMEMaddrset *addrset = add_PMEMaddrset(orig_pmem_map_file(path, len, flags, mode, mapped_lenp, is_pmemp), len, PMEM_FILE);
 
     return addrset->orig_addr;
 }
@@ -550,19 +557,17 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     Waitdrain_addrset *w_set = w_head;
 
     // count++;
-    int abortflag = 0;//abortするときはここを1に変更
-
     // if(count == 2){
     //     abortflag = 1;
     // }
 
-    int rand_memcpy_flag = 1;//rand_memcpyをする場合はここを1に変更
+
 
     if (abortflag == 0){
         while(w_set != NULL){
             uintptr_t d = w_set->addr - w_set->set->orig_addr;
             void *target_addr = (void *)(w_set->set->fake_addr + d);
-            printf("d : %ld\n", d);
+            printf("d : %ld, 0x%lx\n", d, d);
 
             // unsigned long int nth_power = CACHE_LINE_SIZE;
             // uintptr_t real_len = ((uintptr_t)w_set->addr + w_set->len + (nth_power - 1)) & ~(nth_power - 1) - (uintptr_t)w_set->addr & ~(nth_power - 1); 
@@ -588,10 +593,10 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     else{//abortflag == 1
         PMEMaddrset *set = head;
         while(set != NULL){
-            if(rand_memcpy_flag == 0){
+            if(memcpyflag == NORMAL_MEMCPY){
                 memcpy(set->orig_addr, set->fake_addr, set->len);
             }
-            else{
+            else if(memcpyflag == RAND_MEMCPY){
                 rand_memcpy(set);
             }
             orig_pmem_flush(set->orig_addr, set->len);

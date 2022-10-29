@@ -21,7 +21,7 @@
 #define MAX_STORE 100
 
 //#define PATH "/mnt/pmem0/data"
-#define PATH "/mnt/pmem0/data_replica"
+#define PATH "/mnt/pmem0/data"
 //#define NUM_PATH "num"
 
 
