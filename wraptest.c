@@ -1,17 +1,19 @@
-#define _GNU_SOURCE
-
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <dlfcn.h>
-#include <stdint.h>
-#include <time.h>
-#include <sys/mman.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 #include "wraplibpmem.h"
+
+PMEMaddrset *head = NULL;
+PMEMaddrset *tail = NULL;
+
+Waitdrain_addrset *w_head = NULL;
+Waitdrain_addrset *w_tail = NULL;
+
+char *file_list[MAX_FILE_LENGTH];
+LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
+
+void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
+//void (*orig_pmem_persist)(const void*, size_t);
+int (*orig_pmem_unmap)(void*, size_t);
+void (*orig_pmem_flush)(const void *, size_t);
+void (*orig_pmem_drain)();
 
 __attribute__ ((constructor))
 static void constructor () {
@@ -177,6 +179,7 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
     addrset->next = NULL;
     addrset->prev = tail;
     addrset->len = len;
+    addrset->file_type = PMEM_FILE;
     addrset->orig_path = (char *)malloc(strlen(path));
     strcpy(addrset->orig_path, path);
     addrset->persist_count = 0;
@@ -521,7 +524,7 @@ void *pmem_memset(void *pmemdest, int c, size_t len, unsigned flags){
 }
 
 void pmem_flush(const void *addr, size_t len){
-    printf("wrap pmem_flush\n");
+    printf("wrap pmem_flush  addr: %p, len: %lu\n", addr, len);
     add_waitdrainlist(addr, len);
 }
 
@@ -533,7 +536,7 @@ void pmem_wrapdrain(char* file, int line){
     printf("pmem_wrapdrain file:%s, line:%d\n", file, line);
 }
 
-//int count = 0;
+// int count = 0;
 
 void pmem_drain(){//waitdrainに入れたものだけをdrain
     printf("wrap pmem_drain\n");
@@ -546,14 +549,14 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     
     Waitdrain_addrset *w_set = w_head;
 
-    //count++;
+    // count++;
     int abortflag = 0;//abortするときはここを1に変更
 
     // if(count == 2){
     //     abortflag = 1;
     // }
 
-    int rand_memcpy_flag = 0;//rand_memcpyをする場合はここを1に変更
+    int rand_memcpy_flag = 1;//rand_memcpyをする場合はここを1に変更
 
     if (abortflag == 0){
         while(w_set != NULL){
