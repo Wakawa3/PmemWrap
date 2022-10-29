@@ -9,6 +9,8 @@ Waitdrain_addrset *w_tail = NULL;
 char *file_list[MAX_FILE_LENGTH];
 LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
+int persist_count_sum = 0;
+
 void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
 //void (*orig_pmem_persist)(const void*, size_t);
 int (*orig_pmem_unmap)(void*, size_t);
@@ -126,6 +128,7 @@ void read_persistcountfile(){
             persist_line_list[i][j].line = atoi(tmp);
             persist_line_list[i][j].count = 0;
             persist_line_list[i][j].prev_count = atoi(tmp + 11);
+            persist_count_sum += persist_line_list[i][j].prev_count;
             printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
         }
         
@@ -177,6 +180,34 @@ void write_persistcountfile(){
 //         }
 //     }
 // }
+
+int rand_set_abortflag(char *file, int line){
+    int file_id;
+
+    char *tmp;
+    for(file_id=0; file_id<MAX_FILE_LENGTH && file_list[file_id] != NULL; file_id++){
+        if(strcmp(file, file_list[file_id]) != 0){
+            continue;
+        }
+        for(int i=0;(i<MAX_LINE_LENGTH) && (persist_line_list[file_id][i].line != 0); i++){
+            if(persist_line_list[file_id][i].line == line){
+                if(persist_line_list[file_id][i].prev_count == 0){
+                    return 0;
+                }
+                //ランダムにabortflagをセット
+                double probability =  (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_count_sum);
+                double rand_number = (double)rand() / RAND_MAX;
+                printf("probability: %lf, rand_number%lf\n", probability, rand_number);
+                if(rand_number < probability)
+                    return 1;
+                else
+                    return 0;
+            }
+        }
+    }
+
+    return 0;
+}
 
 PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type){
     PMEMaddrset *addrset = (PMEMaddrset *)malloc(sizeof(PMEMaddrset));
@@ -540,6 +571,10 @@ void pmem_flush(const void *addr, size_t len){
 
 void pmem_wrapdrain(char* file, int line){
     printf("wrap pmem_wrapdrain\n");
+    //abortflag = rand_set_abortflag(file, line);
+
+    printf("rand_set_abortflag: %d\n", rand_set_abortflag(file, line));
+
     pmem_drain();
 
     plus_persistcount(file, line);
@@ -563,8 +598,6 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
     // if(count == 2){
     //     abortflag = 1;
     // }
-
-
 
     if (abortflag == 0){
         while(w_set != NULL){
