@@ -1,3 +1,4 @@
 a.out
 libwrappmem.so
 wraptest.o
+wraplibpmemobj.o
