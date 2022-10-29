@@ -16,7 +16,7 @@ void (*orig_pmem_flush)(const void *, size_t);
 void (*orig_pmem_drain)();
 
 int abortflag = 0;
-int memcpyflag = 0;
+int memcpyflag = NORMAL_MEMCPY;
 
 __attribute__ ((constructor))
 static void constructor () {
@@ -24,7 +24,7 @@ static void constructor () {
 
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
-    //read_persistcountfile();
+    read_persistcountfile();
 
     void *dlopen_val = dlopen("/home/satoshi/testlib/lib/libpmem.so.1", RTLD_NOW);
 
@@ -70,6 +70,7 @@ void plus_persistcount(char *file, int line){
         strcpy(file_list[file_id], file);
         persist_line_list[file_id][0].line = line;
         persist_line_list[file_id][0].count = 1;
+        persist_line_list[file_id][0].prev_count = 0;
         return;
     }
 
@@ -85,6 +86,7 @@ void plus_persistcount(char *file, int line){
 }
 
 void read_persistcountfile(){
+    printf("read_persistcountfile\n");
     int fd = open("countfile.txt", O_RDONLY);
     if(fd == -1){
         perror(__func__);
@@ -122,8 +124,9 @@ void read_persistcountfile(){
             tmp[10] = '\0';
 
             persist_line_list[i][j].line = atoi(tmp);
-            persist_line_list[i][j].count = atoi(tmp + 11);
-            printf("%d persist_line_list[%d][%d] line: %d, count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count);
+            persist_line_list[i][j].count = 0;
+            persist_line_list[i][j].prev_count = atoi(tmp + 11);
+            printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
         }
         
         if(r == 0)  break;
@@ -167,13 +170,13 @@ void write_persistcountfile(){
     close(fd);
 }
 
-void reset_persistcount(){
-    for(int i = 0; i<MAX_FILE_LENGTH && file_list[i] != NULL; i++){
-        for(int j = 0; j<MAX_LINE_LENGTH; j++){
-            persist_line_list[i][j].count = 0;
-        }
-    }
-}
+// void reset_persistcount(){
+//     for(int i = 0; i<MAX_FILE_LENGTH && file_list[i] != NULL; i++){
+//         for(int j = 0; j<MAX_LINE_LENGTH; j++){
+//             persist_line_list[i][j].count = 0;
+//         }
+//     }
+// }
 
 PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type){
     PMEMaddrset *addrset = (PMEMaddrset *)malloc(sizeof(PMEMaddrset));

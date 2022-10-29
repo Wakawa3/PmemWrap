@@ -65,6 +65,7 @@ typedef struct _line_info LINEinfo;
 struct _line_info{
     int line;
     int count;
+    int prev_count;
 };
 
 extern char *file_list[MAX_FILE_LENGTH];
@@ -83,7 +84,7 @@ extern int memcpyflag;
 void plus_persistcount(char *file, int line);
 void read_persistcountfile();
 void write_persistcountfile();
-void reset_persistcount();
+// void reset_persistcount();
 
 PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type);
 

@@ -84,7 +84,7 @@ int pmemobj_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size){
 
 void pmemobj_tx_process(){
     printf("****wrap pmemobj_tx_process****\n");
-    abortflag = 1;
+    //abortflag = 1;
     orig_pmemobj_tx_process();
     printf("****end pmemobj_tx_process****\n");
 }

@@ -1,5 +1,3 @@
-a.out
-libwrappmem.so
-libwrappmem2.so
-wraplibpmem.o
-wraplibpmemobj.o
+*.out
+*.so
+*.o
