@@ -10,6 +10,7 @@ char *file_list[MAX_FILE_LENGTH];
 LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
 int persist_count_sum = 0;
+int persist_place_sum = 0;
 
 void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
 //void (*orig_pmem_persist)(const void*, size_t);
@@ -91,10 +92,17 @@ void read_persistcountfile(){
     printf("read_persistcountfile\n");
     int fd = open("countfile.txt", O_RDONLY);
     if(fd == -1){
-        perror(__func__);
-        fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
-        exit(1);
+        printf("countfile.txt doesn't exist.\n");
+        // perror(__func__);
+        // fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        // exit(1);
+        return;
     }
+
+    if(lseek(fd, 0, SEEK_END) == 0){
+            return;
+    }
+    lseek(fd, 0, SEEK_SET);
     
     int file_id;
     int file_name_len;
@@ -129,6 +137,7 @@ void read_persistcountfile(){
             persist_line_list[i][j].count = 0;
             persist_line_list[i][j].prev_count = atoi(tmp + 11);
             persist_count_sum += persist_line_list[i][j].prev_count;
+            persist_place_sum++;
             printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
         }
         
@@ -195,7 +204,7 @@ int rand_set_abortflag(char *file, int line){
                     return 0;
                 }
                 //ランダムにabortflagをセット
-                double probability =  (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_count_sum);
+                double probability =  (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
                 double rand_number = (double)rand() / RAND_MAX;
                 printf("probability: %lf, rand_number%lf\n", probability, rand_number);
                 if(rand_number < probability)

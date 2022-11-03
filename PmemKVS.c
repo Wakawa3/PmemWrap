@@ -2,7 +2,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libpmemobj.h>
+#include "libpmemobj.h"
 #include "PmemKVS.h"
 
 POBJ_LAYOUT_BEGIN(string_store);
@@ -37,6 +37,7 @@ void write_KVS (char *key, int value, char *path)
         id = 0;
     }
     
+    for(int i = 0; i<5; i++){
     TX_BEGIN(pop){
         TX_ADD(root);
 	    D_RW(root)->data[id].keylen = strlen(key);
@@ -50,6 +51,8 @@ void write_KVS (char *key, int value, char *path)
         TX_ADD(root);
         D_RW(root)->number = id + 1;
     } TX_END
+
+    }
 
 	printf("Write [key: %s, value: %d]\n", D_RO(root)->data[id].key, D_RO(root)->data[id].value);
     printf("number : %d\n", D_RO(root)->number);

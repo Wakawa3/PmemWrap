@@ -75,6 +75,7 @@ extern char *file_list[MAX_FILE_LENGTH];
 extern LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
 extern int persist_count_sum;
+extern int persist_place_sum;
 
 extern void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
 //extern void (*orig_pmem_persist)(const void*, size_t);

@@ -69,8 +69,9 @@ PMEMobjpool *pmemobj_open(const char *path, const char *layout){
     return addr;
 }
 
-void pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len){
+void pmemobj_wrappersist(PMEMobjpool *pop, const void *addr, size_t len, char *file, int line){
     printf("****wrap pmemobj_persist****\n");
+    plus_persistcount(file, line);
     orig_pmemobj_persist(pop, addr, len);
     printf("****end pmemobj_persist****\n");
 }
@@ -82,9 +83,52 @@ int pmemobj_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size){
     return ret;
 }
 
+char *tx_process_file = NULL;
+int tx_process_line = 0;
+int c_flag = 0;
+
+void pmemobj_wraptx_process(char *file, int line){
+    printf("****wrap pmemobj_wraptx_process****\n");
+
+    if((tx_process_file == NULL) || (strcmp(tx_process_file, file) != 0) || (tx_process_line != line)){
+        plus_persistcount(file, line);
+        c_flag = 0;
+    }
+    else if(c_flag <= 1){
+        c_flag++;
+    }
+    else{
+        plus_persistcount(file, line);
+        c_flag = 0;
+    }
+
+    // plus_persistcount(file, line);
+
+    tx_process_file = file;
+    tx_process_line = line;
+
+    //abortflag = rand_set_abortflag(file, line);
+    orig_pmemobj_tx_process();
+    printf("****end pmemobj_wraptx_process****\n");
+}
+
 void pmemobj_tx_process(){
     printf("****wrap pmemobj_tx_process****\n");
     //abortflag = 1;
     orig_pmemobj_tx_process();
     printf("****end pmemobj_tx_process****\n");
+}
+
+void *pmemobj_wrapmemcpy_persist(PMEMobjpool *pop, void *dest, const void *src, size_t len, char* file, int line){
+    printf("wrap pmemobj_wrapmemcpy_persist\n");
+    void *ret = memcpy(dest, src, len);
+    pmemobj_wrappersist(pop, dest, len, file, line);
+    return ret;
+}
+
+void *pmemobj_wrapmemset_persist(PMEMobjpool *pop, void *dest, int c, size_t len, char* file, int line){
+    printf("wrap pmemobj_wrapmemset_persist\n");
+    void *ret = memset(dest, c, len);
+    pmemobj_wrappersist(pop, dest, len, file, line);
+    return ret;
 }

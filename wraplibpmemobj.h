@@ -16,8 +16,10 @@ extern void (*orig_pmemobj_tx_process)();
 
 PMEMobjpool *pmemobj_create(const char *path, const char *layout, size_t poolsize, mode_t mode);
 PMEMobjpool *pmemobj_open(const char *path, const char *layout);
-void pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len);
+void pmemobj_wrappersist(PMEMobjpool *pop, const void *addr, size_t len, char *file, int line);
+//void pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len);
 int pmemobj_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size);
-void pmemobj_tx_process();
+void pmemobj_wraptx_process(char *file, int line);
+//void pmemobj_tx_process();
 
 #endif
