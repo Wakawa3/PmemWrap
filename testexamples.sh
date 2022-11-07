@@ -48,19 +48,21 @@ export PMEMWRAP_ABORT=0
 export PMEMWRAP_WRITECOUNTFILE=1
 ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null
 export PMEMWRAP_WRITECOUNTFILE=0
+export PMEMWRAP_MEMCPY=NORMAL_MEMCPY
 
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
 
 for i in `seq 100`
 do
+    echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     export PMEMWRAP_ABORT=1
-    export PMEMWRAP_SEED=${i}${i}${i}${i}${i}${i}${i}
+    export PMEMWRAP_SEED=${i}
     ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-    echo "${i}\n" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     export PMEMWRAP_ABORT=0
     bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt" 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     rm ${PMIMAGE}
+    echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
 done
 
 rm countfile.txt
