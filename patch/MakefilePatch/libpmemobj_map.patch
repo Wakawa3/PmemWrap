@@ -1,0 +1,4 @@
+23c23
+< LIBS = -lpmemobj -pthread
+---
+> LIBS = -lwrappmem2 -lpmemobj -pthread

@@ -1,0 +1,53 @@
+
+set abortflag file: btree_map.c, line, 58
+1\n
+set abortflag file: btree_map.c, line, 58
+2\n
+set abortflag file: btree_map.c, line, 58
+3\n
+set abortflag file: btree_map.c, line, 58
+4\n
+set abortflag file: btree_map.c, line, 58
+5\n
+set abortflag file: btree_map.c, line, 56
+6\n
+set abortflag file: btree_map.c, line, 56
+7\n
+set abortflag file: btree_map.c, line, 56
+8\n
+set abortflag file: btree_map.c, line, 56
+9\n
+set abortflag file: btree_map.c, line, 56
+10\n
+set abortflag file: btree_map.c, line, 56
+11\n
+set abortflag file: btree_map.c, line, 56
+12\n
+set abortflag file: btree_map.c, line, 56
+13\n
+14\n
+15\n
+16\n
+17\n
+18\n
+19\n
+20\n
+21\n
+set abortflag file: data_store.c, line, 120
+22\n
+set abortflag file: data_store.c, line, 120
+23\n
+set abortflag file: data_store.c, line, 120
+24\n
+set abortflag file: data_store.c, line, 120
+25\n
+set abortflag file: data_store.c, line, 120
+26\n
+set abortflag file: data_store.c, line, 120
+27\n
+set abortflag file: data_store.c, line, 120
+28\n
+set abortflag file: btree_map.c, line, 56
+29\n
+set abortflag file: btree_map.c, line, 56
+30\n

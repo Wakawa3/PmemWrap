@@ -14,6 +14,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <immintrin.h>
+
 #define MAX_PATH_LENGTH 256
 #define CACHE_LINE_SIZE 64
 
@@ -27,7 +29,7 @@
 #define RAND_MEMCPY 1
 #define NO_MEMCPY 2
 
-#define ABORTFLAG_COEFFICIENT 2
+#define ABORTFLAG_COEFFICIENT 1
 
 #define LIBPMEMMAP_ALIGN_VAL 0x200000
 
@@ -82,6 +84,7 @@ extern void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, in
 extern int (*orig_pmem_unmap)(void*, size_t);
 extern void (*orig_pmem_flush)(const void *, size_t);
 extern void (*orig_pmem_drain)();
+extern int (*orig_pmem_deep_drain)(const void *, size_t);
 
 extern int abortflag;
 extern int memcpyflag;
@@ -97,6 +100,7 @@ PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type);
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 void pmem_wrappersist(const void *addr, size_t len, char* file, int line);
 void pmem_persist(const void *addr, size_t len);
+void delete_PMEMaddrset(void *addr);
 int pmem_unmap(void *addr, size_t len);
 
 void rand_memcpy(PMEMaddrset *set);
@@ -125,5 +129,9 @@ void *pmem_memset(void *pmemdest, int c, size_t len, unsigned flags);
 void pmem_flush(const void *addr, size_t len);
 void pmem_wrapdrain(char* file, int line);
 void pmem_drain();
+
+int pmem_deep_persist(const void *addr, size_t len);
+void pmem_deep_flush(const void *addr, size_t len);
+int pmem_deep_drain(const void *addr, size_t len);
 
 #endif

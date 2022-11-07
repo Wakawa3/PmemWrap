@@ -1,0 +1,14 @@
+diff --git a/src/examples/libpmemobj/tree_map/ctree_map.c b/src/examples/libpmemobj/tree_map/ctree_map.c
+index 33a19ead3..edd4bdf5d 100644
+--- a/src/examples/libpmemobj/tree_map/ctree_map.c
++++ b/src/examples/libpmemobj/tree_map/ctree_map.c
+@@ -141,7 +141,8 @@ ctree_map_insert_leaf(struct tree_map_entry *p,
+ 	/* insert the found destination in the other slot */
+ 	D_RW(new_node)->entries[!d] = *p;
+ 
+-	pmemobj_tx_add_range_direct(p, sizeof(*p));
++  // BUG: remove tx_add
++	// pmemobj_tx_add_range_direct(p, sizeof(*p));
+ 	p->key = 0;
+ 	p->slot = new_node.oid;
+ }

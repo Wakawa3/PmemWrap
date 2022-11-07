@@ -1,0 +1,13 @@
+diff --git a/redis.conf b/redis.conf
+index 1c0f5f229..c8d69a85c 100644
+--- a/redis.conf
++++ b/redis.conf
+@@ -193,7 +193,7 @@ databases 16
+ # the size is ignored.
+ #
+ # pmfile /mnt/pmem/redis.pm 3gb
+-pmfile ~/redis.pm 1gb
++#pmfile ~/redis.pm 1gb
+  
+ 
+ ################################ SNAPSHOTTING  ################################

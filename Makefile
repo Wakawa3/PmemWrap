@@ -13,10 +13,10 @@ $(SHARED): $(OBJS)
 	$(CC) -shared -o $(SHARED) $(OBJS) -ldl -g -O0
 
 wraplibpmem.o: wraplibpmem.c
-	$(CC) -c -fPIC wraplibpmem.c -o wraplibpmem.o -g -O0
+	$(CC) -c -fPIC wraplibpmem.c -o wraplibpmem.o -g -O0 -mrdrnd
 
 wraplibpmemobj.o: wraplibpmemobj.c
-	$(CC) -c -fPIC wraplibpmemobj.c -o wraplibpmemobj.o -g -O0
+	$(CC) -c -fPIC wraplibpmemobj.c -o wraplibpmemobj.o -g -O0 -mrdrnd
 
 clean:
 	-rm -f $(OBJS) $(SHARED) $(TARGET)

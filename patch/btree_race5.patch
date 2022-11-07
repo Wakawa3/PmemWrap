@@ -1,0 +1,14 @@
+diff --git a/src/examples/libpmemobj/tree_map/btree_map.c b/src/examples/libpmemobj/tree_map/btree_map.c
+index 526548da0..74fbdae45 100644
+--- a/src/examples/libpmemobj/tree_map/btree_map.c
++++ b/src/examples/libpmemobj/tree_map/btree_map.c
+@@ -144,7 +144,8 @@ btree_map_insert_node(TOID(struct tree_map_node) node, int p,
+ 	struct tree_map_node_item item,
+ 	TOID(struct tree_map_node) left, TOID(struct tree_map_node) right)
+ {
+-	TX_ADD(node);
++	//BUG: remote tx_add
++  //TX_ADD(node);
+ 	if (D_RO(node)->items[p].key != 0) { /* move all existing data */
+ 		memmove(&D_RW(node)->items[p + 1], &D_RW(node)->items[p],
+ 		sizeof(struct tree_map_node_item) * ((BTREE_ORDER - 2 - p)));

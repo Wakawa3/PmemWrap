@@ -38,7 +38,7 @@ void write_hello_string (char *buf, char *path)
 		perror("pmem_map_file");
 		exit(1);
 	}
-
+	
 
 	/* store a string to the persistent memory */
 	char *buf2 = buf;

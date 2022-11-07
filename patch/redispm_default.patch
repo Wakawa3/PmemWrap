@@ -1,0 +1,13 @@
+diff --git a/src/Makefile b/src/Makefile
+index c5f678709..5e0c614d6 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -110,7 +110,7 @@ endif
+ 
+ ifeq ($(USE_PMDK),yes)
+ 	DEPENDENCY_TARGETS+= pmdk
+-	FINAL_CFLAGS+= -I../deps/pmdk/src/include -I../deps/pmdk/src/libpmemobj -I../deps/pmdk/src/common -DUSE_PMDK
++	FINAL_CFLAGS+= -I../deps/pmdk/src/include -I../deps/pmdk/src/libpmemobj -I../deps/pmdk/src/common -I../deps/pmdk/src/core -DUSE_PMDK
+ ifeq ($(NVML_DEBUG),yes)
+ 	FINAL_LIBS+= ../deps/pmdk/src/debug/libpmemobj.so ../deps/pmdk/src/debug/libpmem.so
+ else
