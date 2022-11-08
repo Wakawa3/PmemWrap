@@ -15,6 +15,7 @@ int persist_place_sum = 0;
 void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
 //void (*orig_pmem_persist)(const void*, size_t);
 int (*orig_pmem_unmap)(void*, size_t);
+int (*orig_pmem_msync)(const void *addr, size_t len);
 void (*orig_pmem_flush)(const void *, size_t);
 void (*orig_pmem_drain)();
 int (*orig_pmem_deep_drain)(const void *, size_t);
@@ -64,6 +65,11 @@ static void constructor () {
 
     if((orig_pmem_unmap = dlsym(dlopen_val, "pmem_unmap")) == NULL){
         fprintf(stderr, "orig_pmem_unmap: %p\n%s\n", orig_pmem_unmap, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_msync = dlsym(dlopen_val, "pmem_msync")) == NULL){
+        fprintf(stderr, "orig_pmem_msync: %p\n%s\n", orig_pmem_msync, dlerror());
         exit(1);
     }
 
@@ -320,6 +326,12 @@ void pmem_persist(const void *addr, size_t len){
     // printf("wrap pmem_persist\n");
     pmem_flush(addr, len);
     pmem_drain();
+}
+
+int pmem_wrap_msync(const void *addr, size_t len, char *file, int line){
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
+    return orig_pmem_msync(addr, len);
 }
 
 void delete_PMEMaddrset(void *addr){

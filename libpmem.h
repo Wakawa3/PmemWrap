@@ -64,8 +64,9 @@ int pmem_is_pmem(const void *addr, size_t len);
 //
 void pmem_wrap_persist(const void *addr, size_t len, char* file, int line);
 void pmem_persist(const void *addr, size_t len);
-//
+int pmem_wrap_msync(const void *addr, size_t len, char *file, int line);
 int pmem_msync(const void *addr, size_t len);
+//
 int pmem_has_auto_flush(void);
 void pmem_flush(const void *addr, size_t len);
 void pmem_deep_flush(const void *addr, size_t len);
@@ -146,6 +147,7 @@ const wchar_t *pmem_errormsgW(void);
 #endif
 
 #define pmem_persist(addr, len) pmem_wrap_persist((addr), (len), __FILE__, __LINE__)
+#define pmem_msync(addr, len) pmem_wrap_msync((addr), (len), __FILE__, __LINE__)
 #define pmem_memmove_persist(pmemdest, src, len) pmem_wrap_memmove_persist((pmemdest), (src), (len), __FILE__, __LINE__)
 #define pmem_memcpy_persist(pmemdest, src, len) pmem_wrap_memcpy_persist((pmemdest), (src), (len), __FILE__, __LINE__)
 #define pmem_memset_persist(pmemdest, c, len) pmem_wrap_memset_persist((pmemdest), (c), (len), __FILE__, __LINE__)

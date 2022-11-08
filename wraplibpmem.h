@@ -98,6 +98,7 @@ PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type);
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 void pmem_wrap_persist(const void *addr, size_t len, char* file, int line);
 void pmem_persist(const void *addr, size_t len);
+int pmem_wrap_msync(const void *addr, size_t len, char *file, int line);
 void delete_PMEMaddrset(void *addr);
 int pmem_unmap(void *addr, size_t len);
 
