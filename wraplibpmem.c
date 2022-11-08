@@ -42,13 +42,13 @@ static void constructor () {
     }
 
     char* memcpyflag_env = getenv("PMEMWRAP_MEMCPY");
-    if(memcpyflag_env == NULL || strcmp(memcpyflag_env, "NORAMAL_MEMCPY")){
+    if(memcpyflag_env == NULL || strcmp(memcpyflag_env, "NORAMAL_MEMCPY") == 0){
         memcpyflag = NORMAL_MEMCPY;
     }
-    else if(strcmp(memcpyflag_env, "RAND_MEMCPY")){
+    else if(strcmp(memcpyflag_env, "RAND_MEMCPY") == 0){
         memcpyflag = RAND_MEMCPY;
     }
-    else if(strcmp(memcpyflag_env, "NO_MEMCPY")){
+    else if(strcmp(memcpyflag_env, "NO_MEMCPY") == 0){
         memcpyflag = NO_MEMCPY;
     }
     else{
@@ -147,11 +147,11 @@ void read_persistcountfile(){
         char *new_line_ptr = strchr(tmp, '\n');
         tmp[new_line_ptr - tmp] = '\0'; //get file name
         offset = lseek(fd, new_line_ptr - tmp + 1, SEEK_CUR);
-        printf("%d tmp: %s\n", __LINE__, tmp);
+        //printf("%d tmp: %s\n", __LINE__, tmp);
 
         file_list[i] = malloc(strlen(tmp + 1) + 1);//skip '_'
         strcpy(file_list[i], tmp + 1);
-        printf("%d file_list[%d]: %s\n", __LINE__, i, file_list[i]);
+        // printf("%d file_list[%d]: %s\n", __LINE__, i, file_list[i]);
 
         for (int j=0;;j++){
             r = pread(fd, tmp, 21, offset); // int digit + _ + int digit
@@ -159,7 +159,7 @@ void read_persistcountfile(){
                 break;
             }
             tmp[21] = '\0';
-            printf("%d tmp: %s, r: %d\n", __LINE__, tmp, r);
+            // printf("%d tmp: %s, r: %d\n", __LINE__, tmp, r);
             offset = lseek(fd, 22, SEEK_CUR);
 
             tmp[10] = '\0';
@@ -168,8 +168,8 @@ void read_persistcountfile(){
             persist_line_list[i][j].count = 0;
             persist_line_list[i][j].prev_count = atoi(tmp + 11);
             persist_count_sum += persist_line_list[i][j].prev_count;
-            persist_place_sum++;
-            printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
+            if(persist_line_list[i][j].prev_count != 0) persist_place_sum++;
+            // printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
         }
         
         if(r == 0)  break;
@@ -214,7 +214,7 @@ void write_persistcountfile(){
             }
             free(tmp);
         }
-        printf("write_persistcountfile file_id: %d\n", file_id);
+        //printf("write_persistcountfile file_id: %d\n", file_id);
     }
 
     close(fd);
@@ -240,6 +240,8 @@ void rand_set_abortflag(char *file, int line){
     if(abortflag == 1){
         return;
     }
+
+    printf("test\n");
 
     srand((unsigned int)time(NULL) + subseed + abort_count);
     abort_count++;
@@ -309,6 +311,7 @@ void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t
 
 void pmem_wrap_persist(const void *addr, size_t len, char* file, int line){
     // printf("wrap pmem_wrappersist\n");
+
     pmem_flush(addr, len);
     pmem_wrap_drain(file, line);
 }
@@ -642,13 +645,11 @@ void pmem_flush(const void *addr, size_t len){
 
 void pmem_wrap_drain(char* file, int line){
     // printf("wrap pmem_wrap_drain\n");
-    //rand_set_abortflag(file, line);
-
-    // printf("rand_set_abortflag: %d\n", rand_set_abortflag(file, line));
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
 
     pmem_drain();
-
-    plus_persistcount(file, line);
+    
     // printf("pmem_wrap_drain file:%s, line:%d\n", file, line);
 }
 

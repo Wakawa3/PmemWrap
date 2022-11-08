@@ -121,8 +121,8 @@ void pmemobj_wrap_persist(PMEMobjpool *pop, const void *addr, size_t len, char *
 
 int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, char* file, int line){
     // printf("****wrap pmemobj_wrap_tx_add_range****\n");
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    //plus_persistcount(file, line);
+    //rand_set_abortflag(file, line);
     int ret = orig_pmemobj_tx_add_range(oid, hoff, size);
     // printf("****end pmemobj_wrap_tx_add_range****\n");
     return ret;
@@ -146,7 +146,7 @@ int tx_process_line = 0;
 int c_flag = 0;
 
 void pmemobj_wrap_tx_process(char *file, int line){
-    printf("****wrap pmemobj_wrap_tx_process**** file: %s, line: %d\n", file, line);
+    //printf("****wrap pmemobj_wrap_tx_process**** file: %s, line: %d\n", file, line);
 
     if((tx_process_file == NULL) || (strcmp(tx_process_file, file) != 0) || (tx_process_line != line)){
         plus_persistcount(file, line);

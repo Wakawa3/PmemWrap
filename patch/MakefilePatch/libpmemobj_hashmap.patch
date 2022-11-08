@@ -1,0 +1,4 @@
+6c6
+< LIBS = -lpmemobj
+---
+> LIBS = -lwrappmem2 -lpmemobj
