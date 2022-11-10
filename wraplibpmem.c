@@ -1,5 +1,7 @@
 #include "wraplibpmem.h"
 
+#define ABORTFLAG_COEFFICIENT 1
+
 PMEMaddrset *head = NULL;
 PMEMaddrset *tail = NULL;
 
@@ -11,6 +13,7 @@ LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
 int persist_count_sum = 0;
 int persist_place_sum = 0;
+int abort_count_sum = 0;
 
 void *(*orig_pmem_map_file)(const char*, size_t, int, mode_t, size_t*, int*);
 //void (*orig_pmem_persist)(const void*, size_t);
@@ -24,7 +27,7 @@ int pmemwrap_abort = 0;
 int abortflag = 0;
 int memcpyflag = NORMAL_MEMCPY;
 
-int abort_count = 0;
+int rand_set_count = 0;
 int subseed = 0;
 
 __attribute__ ((constructor))
@@ -111,6 +114,7 @@ void plus_persistcount(char *file, int line){
         persist_line_list[file_id][0].line = line;
         persist_line_list[file_id][0].count = 1;
         persist_line_list[file_id][0].prev_count = 0;
+        persist_line_list[file_id][0].abort_count = 0;
         return;
     }
 
@@ -160,20 +164,24 @@ void read_persistcountfile(){
         // printf("%d file_list[%d]: %s\n", __LINE__, i, file_list[i]);
 
         for (int j=0;;j++){
-            r = pread(fd, tmp, 21, offset); // int digit + _ + int digit
+            r = pread(fd, tmp, 32, offset); // int digit + _ + int digit + _ + int digit
             if((r == 0) || (tmp[0] == '_')){
                 break;
             }
-            tmp[21] = '\0';
+            tmp[32] = '\0';
             // printf("%d tmp: %s, r: %d\n", __LINE__, tmp, r);
-            offset = lseek(fd, 22, SEEK_CUR);
+            offset = lseek(fd, 33, SEEK_CUR);
 
             tmp[10] = '\0';
+
+            tmp[21] = '\0';
 
             persist_line_list[i][j].line = atoi(tmp);
             persist_line_list[i][j].count = 0;
             persist_line_list[i][j].prev_count = atoi(tmp + 11);
+            persist_line_list[i][j].abort_count = atoi(tmp + 22);
             persist_count_sum += persist_line_list[i][j].prev_count;
+            abort_count_sum += persist_line_list[i][j].abort_count;
             if(persist_line_list[i][j].prev_count != 0) persist_place_sum++;
             // printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
         }
@@ -186,7 +194,7 @@ void read_persistcountfile(){
 
 void write_persistcountfile(){
     char *env = getenv("PMEMWRAP_WRITECOUNTFILE");
-    if(env != NULL && strcmp(env, "0") == 0){
+    if(env != NULL && strcmp(env, "NO") == 0){
         //fprintf(stderr, "pmemwrap_writecountfile == 0\n");
         return;
     }
@@ -212,9 +220,19 @@ void write_persistcountfile(){
         free(tmp);
 
         for(int i=0;(i<MAX_LINE_LENGTH) && (persist_line_list[file_id][i].line != 0); i++){
-            tmp = (char *)malloc(23); //int digit(10) + _ + int digit(10) + \n + \0
-            sprintf(tmp, "%010d_%010d\n", persist_line_list[file_id][i].line, persist_line_list[file_id][i].count);
-            if(write(fd, tmp, 22) != 22){
+            tmp = (char *)malloc(34); //int digit(10) + _ + int digit(10) + _ + int digit(10) + \n + \0
+            if(env != NULL && strcmp(env, "ADD") == 0){
+                int larger_count;
+                if(persist_line_list[file_id][i].count > persist_line_list[file_id][i].prev_count)
+                    larger_count = persist_line_list[file_id][i].count;
+                else
+                    larger_count = persist_line_list[file_id][i].prev_count;
+                sprintf(tmp, "%010d_%010d_%010d\n", persist_line_list[file_id][i].line, larger_count, persist_line_list[file_id][i].abort_count);
+            }
+            else{
+                sprintf(tmp, "%010d_%010d_%010d\n", persist_line_list[file_id][i].line, persist_line_list[file_id][i].count, 0);
+            }
+            if(write(fd, tmp, 33) != 33){
                 fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
                 exit(1);
             }
@@ -249,8 +267,8 @@ void rand_set_abortflag(char *file, int line){
 
     printf("test\n");
 
-    srand((unsigned int)time(NULL) + subseed + abort_count);
-    abort_count++;
+    srand((unsigned int)time(NULL) + subseed + rand_set_count);
+    rand_set_count++;
     int file_id;
 
     char *tmp;
@@ -265,12 +283,22 @@ void rand_set_abortflag(char *file, int line){
                     return;
                 }
                 //ランダムにabortflagをセット
-                int randnum = rand();
-                double probability =  (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
-                double rand_number = (double)randnum / RAND_MAX;
+                int rand_num = rand();
+                double probability = (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
+                if (abort_count_sum != 0){
+                    double mul = 1 - (double)persist_line_list[file_id][i].abort_count/ (double)abort_count_sum;
+                    //if(mul < (double)1.0 && mul > (double)0)
+                    probability *= mul;
+                }
+                    
+                //fprintf(stderr, "1, %f 2, %f 3, %f\n", probability, (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum), (double)persist_line_list[file_id][i].abort_count / (double)abort_count_sum);
+                double rand_number = (double)rand_num / RAND_MAX;
                 // printf("probability: %lf, rand_number%lf\n", probability, rand_number);
                 if(rand_number < probability){
-                    fprintf(stderr, "set abortflag file: %s, line: %d, abort_count: %d, randnum: %d\n", file, line, abort_count, randnum);
+                    //正しい挙動
+                    fprintf(stderr, "set abortflag file: %s, line: %d, rand_set_count: %d, rand_num: %d\n", file, line, rand_set_count, rand_num);
+                    //
+                    persist_line_list[file_id][i].abort_count++;
                     abortflag = 1;
                     return;
                 }
@@ -713,11 +741,9 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
             //printf("drain i: %d\n", i++);
         }
 
+        write_persistcountfile();
         abort();
     }
-
-    //rand_memcpyを適用させている場合はコメントアウトを外す。
-    //abort();
     
     return;
 }

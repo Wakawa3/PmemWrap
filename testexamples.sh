@@ -1,4 +1,4 @@
-PM_ROOT=${HOME}/pmdk_orig/src/examples/libpmemobj
+PM_ROOT=${HOME}/pmdk_1.8/src/examples/libpmemobj
 
 TEST_ROOT=${HOME}/PmemWrap2
 
@@ -60,10 +60,10 @@ cp ${TEST_ROOT}/libpmemobj.h ${PM_ROOT}/hashmap
 make -j$(nproc)
 
 export PMEMWRAP_ABORT=0
-export PMEMWRAP_WRITECOUNTFILE=1
+export PMEMWRAP_WRITECOUNTFILE=YES
 ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null
-export PMEMWRAP_WRITECOUNTFILE=0
-export PMEMWRAP_MEMCPY=RAND_MEMCPY
+export PMEMWRAP_WRITECOUNTFILE=ADD
+export PMEMWRAP_MEMCPY=NORMAL_MEMCPY
 
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
@@ -80,7 +80,7 @@ do
     echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
 done
 
-rm countfile.txt
+#rm countfile.txt
 
 make clean -j$(nproc)
 

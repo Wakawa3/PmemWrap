@@ -27,8 +27,6 @@
 #define RAND_MEMCPY 1
 #define NO_MEMCPY 2
 
-#define ABORTFLAG_COEFFICIENT 1
-
 #define LIBPMEMMAP_ALIGN_VAL 0x200000
 
 typedef struct _pmemaddrset PMEMaddrset;
@@ -68,6 +66,7 @@ struct _line_info{
     int line;
     int count;
     int prev_count;
+    int abort_count;
 };
 
 extern char *file_list[MAX_FILE_LENGTH];
