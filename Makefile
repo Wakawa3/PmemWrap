@@ -1,10 +1,10 @@
 CC = gcc
-CFLALGS = -g -O0 -lwrappmem2 -lpmem -lpmemobj
+CFLALGS = -g -O0 -lwrappmem -lpmem -lpmemobj
 TARGET = a.out
 RUN_SRCS = libpmemtest.c libpmemtest2.c
 SRCS = wraplibpmem.c wraplibpmemobj.c
 OBJS = $(SRCS:.c=.o)
-SHARED = libwrappmem2.so
+SHARED = libwrappmem.so
 
 $(TARGET): $(SHARED)
 	$(CC) -o $@ $(RUN_SRCS) $(CFLALGS)

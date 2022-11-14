@@ -36,7 +36,7 @@ struct _pmemaddrset {
     void *fake_addr;
     PMEMaddrset *next;
     PMEMaddrset *prev;
-    int len;
+    size_t len;
     // int persist_count;
     int file_type;
     // char *orig_path;
@@ -51,7 +51,7 @@ struct _waitdrain_addrset{
     void *addr;
     Waitdrain_addrset *next;
     Waitdrain_addrset *prev;
-    int len;
+    size_t len;
     PMEMaddrset *set;
 };
 

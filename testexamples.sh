@@ -1,6 +1,6 @@
 PM_ROOT=${HOME}/pmdk_1.8/src/examples/libpmemobj
 
-TEST_ROOT=${HOME}/PmemWrap2
+TEST_ROOT=${HOME}/PmemWrap
 
 #WORKLOAD=btree
 WORKLOAD=$1

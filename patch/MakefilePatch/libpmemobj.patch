@@ -1,4 +1,4 @@
 12c12
 < LIBS = -lpmemobj -lpmem -pthread -lm -pthread
 ---
-> LIBS = -lwrappmem2 -lpmemobj -lpmem -pthread -lm -pthread
+> LIBS = -lwrappmem -lpmemobj -lpmem -pthread -lm -pthread
