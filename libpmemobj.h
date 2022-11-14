@@ -35,6 +35,8 @@ int pmemobj_wrap_realloc(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t 
 PMEMoid pmemobj_wrap_tx_alloc(size_t size, uint64_t type_num, char* file, int line);
 PMEMoid pmemobj_wrap_tx_zalloc(size_t size, uint64_t type_num, char* file, int line);
 
+void force_abort_drain(char* file, int line);
+
 #define pmemobj_tx_process() pmemobj_wrap_tx_process(__FILE__, __LINE__)
 #define pmemobj_tx_add_range(oid, hoff, size) pmemobj_wrap_tx_add_range((oid), (hoff), (size), __FILE__, __LINE__)
 #define pmemobj_tx_add_range_direct(ptr, size) pmemobj_wrap_tx_add_range_direct((ptr), (size), __FILE__, __LINE__)
@@ -46,5 +48,7 @@ PMEMoid pmemobj_wrap_tx_zalloc(size_t size, uint64_t type_num, char* file, int l
 #define pmemobj_realloc(pop, oidp, size, type_num) pmemobj_wrap_realloc((pop), (oidp), (size), (type_num), __FILE__, __LINE__)
 #define pmemobj_tx_alloc(size, type_num) pmemobj_wrap_tx_alloc((size), (type_num), __FILE__, __LINE__)
 #define pmemobj_tx_zalloc(size, type_num) pmemobj_wrap_tx_zalloc((size), (type_num), __FILE__, __LINE__)
+
+#define PMEMWRAP_FORCE_ABORT() force_abort_drain(__FILE__, __LINE__)
 
 #endif	/* libpmemobj.h */

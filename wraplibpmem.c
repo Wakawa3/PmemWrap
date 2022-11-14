@@ -265,8 +265,6 @@ void rand_set_abortflag(char *file, int line){
         return;
     }
 
-    printf("test\n");
-
     srand((unsigned int)time(NULL) + subseed + rand_set_count);
     rand_set_count++;
     int file_id;
@@ -286,9 +284,8 @@ void rand_set_abortflag(char *file, int line){
                 int rand_num = rand();
                 double probability = (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
                 if (abort_count_sum != 0){
-                    double mul = 1 - (double)persist_line_list[file_id][i].abort_count/ (double)abort_count_sum;
-                    //if(mul < (double)1.0 && mul > (double)0)
-                    probability *= mul;
+                    for(int j=0; j<persist_line_list[file_id][i].abort_count; j++)
+                        probability *= 1 / (double)1.1;
                 }
                     
                 //fprintf(stderr, "1, %f 2, %f 3, %f\n", probability, (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum), (double)persist_line_list[file_id][i].abort_count / (double)abort_count_sum);
@@ -771,4 +768,14 @@ int pmem_deep_drain(const void *addr, size_t len){
     // fprintf(stderr, "pmem_deep_drain is used: , %s, %d\n", __FILE__, __LINE__);
     // exit(1);
     // return -1;
+}
+
+
+
+void force_abort_drain(char* file, int line){
+    abortflag = 1;
+    //正しい挙動
+    fprintf(stderr, "FORCE set abortflag file: %s, line: %d\n", file, line);
+    //
+    pmem_drain();
 }

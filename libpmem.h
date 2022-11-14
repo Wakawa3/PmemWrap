@@ -146,6 +146,8 @@ const wchar_t *pmem_errormsgW(void);
 }
 #endif
 
+void force_abort_drain(char* file, int line);
+
 #define pmem_persist(addr, len) pmem_wrap_persist((addr), (len), __FILE__, __LINE__)
 #define pmem_msync(addr, len) pmem_wrap_msync((addr), (len), __FILE__, __LINE__)
 #define pmem_memmove_persist(pmemdest, src, len) pmem_wrap_memmove_persist((pmemdest), (src), (len), __FILE__, __LINE__)
@@ -155,4 +157,7 @@ const wchar_t *pmem_errormsgW(void);
 #define pmem_memcpy(pmemdest, src, len, flags) pmem_wrap_memcpy((pmemdest), (src), (len), (flags), __FILE__, __LINE__)
 #define pmem_memset(pmemdest, c, len, flags) pmem_wrap_memset((pmemdest), (c), (len), (flags), __FILE__, __LINE__)
 #define pmem_drain() pmem_wrap_drain(__FILE__, __LINE__)
+
+#define PMEMWRAP_FORCE_ABORT() force_abort_drain(__FILE__, __LINE__)
+
 #endif	/* libpmem.h */

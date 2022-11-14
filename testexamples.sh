@@ -57,6 +57,8 @@ cp ${TEST_ROOT}/libpmemobj.h ${PM_ROOT}/map
 cp ${TEST_ROOT}/libpmemobj.h ${PM_ROOT}/tree_map
 cp ${TEST_ROOT}/libpmemobj.h ${PM_ROOT}/hashmap
 
+make clean -j$(nproc)
+
 make -j$(nproc)
 
 export PMEMWRAP_ABORT=0
@@ -74,6 +76,7 @@ do
     export PMEMWRAP_ABORT=1
     export PMEMWRAP_SEED=${i}
     ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    #./data_store btree /mnt/pmem0/ds_testex 200
     export PMEMWRAP_ABORT=0
     bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt" 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     rm ${PMIMAGE}
