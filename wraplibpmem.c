@@ -110,6 +110,12 @@ void plus_persistcount(char *file, int line){
 
     if(matched == 0){
         file_list[file_id] = (char *)malloc(strlen(file) + 1);
+        if(file_list[file_id] == NULL){
+            perror(__func__);
+            fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+
         strcpy(file_list[file_id], file);
         persist_line_list[file_id][0].line = line;
         persist_line_list[file_id][0].count = 1;
@@ -148,6 +154,12 @@ void read_persistcountfile(){
     int file_id;
     int file_name_len;
     char *tmp = (char *)malloc(MAX_FILE_LENGTH + 1);
+    if(tmp == NULL){
+        perror(__func__);
+        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
     int r, offset;
 
     for(int i=0;;i++){
@@ -160,6 +172,12 @@ void read_persistcountfile(){
         //printf("%d tmp: %s\n", __LINE__, tmp);
 
         file_list[i] = malloc(strlen(tmp + 1) + 1);//skip '_'
+        if(file_list[i] == NULL){
+            perror(__func__);
+            fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+
         strcpy(file_list[i], tmp + 1);
         // printf("%d file_list[%d]: %s\n", __LINE__, i, file_list[i]);
 
@@ -212,6 +230,12 @@ void write_persistcountfile(){
     for(file_id=0; file_id<MAX_FILE_LENGTH && file_list[file_id] != NULL; file_id++){
         file_name_len = strlen(file_list[file_id]);
         tmp = (char *)malloc(file_name_len + 3); // _, \n, \0
+        if(tmp == NULL){
+            perror(__func__);
+            fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+
         sprintf(tmp, "_%s\n", file_list[file_id]);
         if(write(fd, tmp, file_name_len + 2) != file_name_len + 2){
             fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
@@ -221,6 +245,12 @@ void write_persistcountfile(){
 
         for(int i=0;(i<MAX_LINE_LENGTH) && (persist_line_list[file_id][i].line != 0); i++){
             tmp = (char *)malloc(34); //int digit(10) + _ + int digit(10) + _ + int digit(10) + \n + \0
+            if(tmp == NULL){
+                perror(__func__);
+                fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+                exit(1);
+            }
+
             if(env != NULL && strcmp(env, "ADD") == 0){
                 int larger_count;
                 if(persist_line_list[file_id][i].count > persist_line_list[file_id][i].prev_count)
@@ -313,6 +343,12 @@ void rand_set_abortflag(char *file, int line){
 
 PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type){
     PMEMaddrset *addrset = (PMEMaddrset *)malloc(sizeof(PMEMaddrset));
+    if(addrset == NULL){
+        perror(__func__);
+        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
     addrset->orig_addr = orig_addr;
     addrset->fake_addr = aligned_alloc(LIBPMEMMAP_ALIGN_VAL, len);
     addrset->next = NULL;
@@ -520,6 +556,12 @@ void add_waitdrainlist(const void *addr, size_t len){
     }
 
     w_set = (Waitdrain_addrset *)malloc(sizeof(Waitdrain_addrset));
+    if(w_set == NULL){
+        perror(__func__);
+        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
     w_set->addr = (char *)addr;
     w_set->len = len;
     w_set->next = NULL;
