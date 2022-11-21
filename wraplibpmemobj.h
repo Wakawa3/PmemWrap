@@ -19,10 +19,10 @@ extern void (*orig_pmemobj_close)(PMEMobjpool *pop);
 
 PMEMobjpool *pmemobj_create(const char *path, const char *layout, size_t poolsize, mode_t mode);
 PMEMobjpool *pmemobj_open(const char *path, const char *layout);
-void pmemobj_wrap_persist(PMEMobjpool *pop, const void *addr, size_t len, char *file, int line);
+void pmemobj_wrap_persist(PMEMobjpool *pop, const void *addr, size_t len, const char *file, int line);
 //void pmemobj_persist(PMEMobjpool *pop, const void *addr, size_t len);
-int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, char* file, int line);
-void pmemobj_wrap_tx_process(char *file, int line);
+int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, const char *file, int line);
+void pmemobj_wrap_tx_process(const char *file, int line);
 //void pmemobj_tx_process();
 
 #endif

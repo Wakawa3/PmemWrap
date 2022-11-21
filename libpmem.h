@@ -62,9 +62,9 @@ void *pmem_map_fileW(const wchar_t *path, size_t len, int flags, mode_t mode,
 int pmem_unmap(void *addr, size_t len);
 int pmem_is_pmem(const void *addr, size_t len);
 //
-void pmem_wrap_persist(const void *addr, size_t len, char* file, int line);
+void pmem_wrap_persist(const void *addr, size_t len, const char *file, int line);
 void pmem_persist(const void *addr, size_t len);
-int pmem_wrap_msync(const void *addr, size_t len, char *file, int line);
+int pmem_wrap_msync(const void *addr, size_t len, const char *file, int line);
 int pmem_msync(const void *addr, size_t len);
 //
 int pmem_has_auto_flush(void);
@@ -73,15 +73,15 @@ void pmem_deep_flush(const void *addr, size_t len);
 int pmem_deep_drain(const void *addr, size_t len);
 int pmem_deep_persist(const void *addr, size_t len);
 //
-void pmem_wrap_drain(char* file, int line);
+void pmem_wrap_drain(const char *file, int line);
 void pmem_drain();
 //
 int pmem_has_hw_drain(void);
 
 //
-void *pmem_wrap_memmove_persist(void *pmemdest, const void *src, size_t len, char* file, int line);
-void *pmem_wrap_memcpy_persist(void *pmemdest, const void *src, size_t len, char* file, int line);
-void *pmem_wrap_memset_persist(void *pmemdest, int c, size_t len, char* file, int line);
+void *pmem_wrap_memmove_persist(void *pmemdest, const void *src, size_t len, const char *file, int line);
+void *pmem_wrap_memcpy_persist(void *pmemdest, const void *src, size_t len, const char *file, int line);
+void *pmem_wrap_memset_persist(void *pmemdest, int c, size_t len, const char *file, int line);
 void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len);
 void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len);
 void *pmem_memset_persist(void *pmemdest, int c, size_t len);
@@ -108,9 +108,9 @@ void *pmem_memset_nodrain(void *pmemdest, int c, size_t len);
 				PMEM_F_MEM_NOFLUSH)
 
 //
-void *pmem_wrap_memmove(void *pmemdest, const void *src, size_t len, unsigned flags, char* file, int line);
-void *pmem_wrap_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags, char* file, int line);
-void *pmem_wrap_memset(void *pmemdest, int c, size_t len, unsigned flags, char* file, int line);
+void *pmem_wrap_memmove(void *pmemdest, const void *src, size_t len, unsigned flags, const char *file, int line);
+void *pmem_wrap_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags, const char *file, int line);
+void *pmem_wrap_memset(void *pmemdest, int c, size_t len, unsigned flags, const char *file, int line);
 void *pmem_memmove(void *pmemdest, const void *src, size_t len, unsigned flags);
 void *pmem_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags);
 void *pmem_memset(void *pmemdest, int c, size_t len, unsigned flags);
@@ -146,7 +146,7 @@ const wchar_t *pmem_errormsgW(void);
 }
 #endif
 
-void force_abort_drain(char* file, int line);
+void force_abort_drain(const char *file, int line);
 
 #define pmem_persist(addr, len) pmem_wrap_persist((addr), (len), __FILE__, __LINE__)
 #define pmem_msync(addr, len) pmem_wrap_msync((addr), (len), __FILE__, __LINE__)
