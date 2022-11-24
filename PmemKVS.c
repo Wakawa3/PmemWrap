@@ -3,7 +3,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "libpmemobj.h"
+#include "libpmem.h"
 #include "PmemKVS.h"
+
+void pmemwrap_copy();
 
 POBJ_LAYOUT_BEGIN(string_store);
 POBJ_LAYOUT_ROOT(string_store, struct KVstruct);
@@ -37,7 +40,6 @@ void write_KVS (char *key, int value, char *path)
         id = 0;
     }
     
-    for(int i = 0; i<5; i++){
     TX_BEGIN(pop){
         TX_ADD(root);
 	    D_RW(root)->data[id].keylen = strlen(key);
@@ -52,10 +54,17 @@ void write_KVS (char *key, int value, char *path)
         D_RW(root)->number = id + 1;
     } TX_END
 
-    }
-
 	printf("Write [key: %s, value: %d]\n", D_RO(root)->data[id].key, D_RO(root)->data[id].value);
     printf("number : %d\n", D_RO(root)->number);
+
+    // pmem_persist(pop, PMEMOBJ_MIN_POOL);
+
+    //pmemwrap_copy();
+
+    PMEMWRAP_FORCE_ABORT();
+
+    // abort();
+
 
 	pmemobj_close(pop);	
 

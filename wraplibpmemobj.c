@@ -94,7 +94,7 @@ PMEMobjpool *pmemobj_create(const char *path, const char *layout, size_t poolsiz
     size = poolsize;
     // printf("addr: %p, size: %lu\n", addr, size);
     if(addr != NULL){
-        add_PMEMaddrset(addr, poolsize, PMEMOBJ_FILE);
+        add_PMEMaddrset(addr, poolsize, path, PMEMOBJ_FILE);
     }
     // printf("****end pmemobj_create****\n");
     return addr;
@@ -111,7 +111,7 @@ PMEMobjpool *pmemobj_open(const char *path, const char *layout){
     // printf("addr: %p, size: %lu\n", addr, size);
 
     if(addr != NULL){
-        add_PMEMaddrset(addr, size, PMEMOBJ_FILE);
+        add_PMEMaddrset(addr, size, path, PMEMOBJ_FILE);
     }
     // printf("****end pmemobj_open****\n");
     return addr;
@@ -182,7 +182,7 @@ void pmemobj_wrap_tx_process(const char *file, int line){
     tx_process_line = line;
 
     orig_pmemobj_tx_process();
-    // printf("****end pmemobj_wrap_tx_process****\n");
+    //printf("****end pmemobj_wrap_tx_process****\n");
 }
 
 void pmemobj_tx_process(){

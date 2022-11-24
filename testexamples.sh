@@ -61,11 +61,13 @@ make clean -j$(nproc)
 
 make -j$(nproc)
 
+export PMEMWRAP_MULTITHREAD=SINGLE
+
 export PMEMWRAP_ABORT=0
 export PMEMWRAP_WRITECOUNTFILE=YES
+export PMEMWRAP_MEMCPY=NO_MEMCPY
 ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null
 export PMEMWRAP_WRITECOUNTFILE=ADD
-export PMEMWRAP_MEMCPY=NORMAL_MEMCPY
 
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
@@ -73,14 +75,18 @@ echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
 for i in `seq 100`
 do
     echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
     export PMEMWRAP_ABORT=1
     export PMEMWRAP_SEED=${i}
+    export PMEMWRAP_MEMCPY=NORMAL_MEMCPY
     ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     #./data_store btree /mnt/pmem0/ds_testex 200
     export PMEMWRAP_ABORT=0
+    export PMEMWRAP_MEMCPY=NO_MEMCPY
     bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt" 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     rm ${PMIMAGE}
     echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
 done
 
 #rm countfile.txt

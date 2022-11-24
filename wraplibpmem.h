@@ -28,6 +28,7 @@
 #define NO_MEMCPY 2
 
 #define LIBPMEMMAP_ALIGN_VAL 0x200000
+#define COPYFILE_WORDENDING "_flushed"
 
 typedef struct _pmemaddrset PMEMaddrset;
 
@@ -37,9 +38,9 @@ struct _pmemaddrset {
     PMEMaddrset *next;
     PMEMaddrset *prev;
     size_t len;
-    // int persist_count;
     int file_type;
-    // char *orig_path;
+    int flushed_copyfile_fd;
+    char *flushed_copyfile_path;
 };
 
 extern PMEMaddrset *head;
@@ -92,7 +93,7 @@ void write_persistcountfile();
 // void reset_persistcount();
 void rand_set_abortflag(const char *file, int line);
 
-PMEMaddrset *add_PMEMaddrset(void *orig_addr, size_t len, int file_type);
+void add_PMEMaddrset(void *orig_addr, size_t len, const char *path, int file_type);
 
 void *pmem_map_file(const char *path, size_t len, int flags, mode_t mode, size_t *mapped_lenp, int *is_pmemp);
 void pmem_wrap_persist(const void *addr, size_t len, const char *file, int line);
