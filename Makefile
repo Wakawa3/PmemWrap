@@ -12,7 +12,7 @@ $(TARGET): $(SHARED)
 	$(CC) -o $@ $(RUN_SRCS) $(CFLALGS)
 
 $(SHARED): $(OBJS)
-	$(CC) -shared -o $(SHARED) $(OBJS) -ldl -g -O0
+	$(CC) -shared -o $(SHARED) $(OBJS) -ldl -pthread -g -O0
 
 wraplibpmem.o: wraplibpmem.c wraplibpmem.h
 	$(CC) -c -fPIC wraplibpmem.c -o wraplibpmem.o -pthread -g -O0

@@ -27,6 +27,8 @@
 #define RAND_MEMCPY 1
 #define NO_MEMCPY 2
 
+#define MEMCPY_THREADS 1
+
 #define LIBPMEMMAP_ALIGN_VAL 0x200000
 #define COPYFILE_WORDENDING "_flushed"
 
@@ -102,7 +104,9 @@ int pmem_wrap_msync(const void *addr, size_t len, const char *file, int line);
 void delete_PMEMaddrset(void *addr);
 int pmem_unmap(void *addr, size_t len);
 
-void rand_memcpy(PMEMaddrset *set);
+void *sub_normal_memcpy(void *p);
+void *sub_rand_memcpy(void *p);
+void rollback_memcpy(PMEMaddrset *set);
 // void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);//現在不使用
 
 void add_waitdrainlist(const void *addr, size_t len);

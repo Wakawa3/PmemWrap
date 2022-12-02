@@ -6,8 +6,6 @@
 #include "libpmem.h"
 #include "PmemKVS.h"
 
-void pmemwrap_copy();
-
 POBJ_LAYOUT_BEGIN(string_store);
 POBJ_LAYOUT_ROOT(string_store, struct KVstruct);
 POBJ_LAYOUT_TOID(string_store, struct subKVstruct);
@@ -59,9 +57,8 @@ void write_KVS (char *key, int value, char *path)
 
     // pmem_persist(pop, PMEMOBJ_MIN_POOL);
 
-    //pmemwrap_copy();
 
-    PMEMWRAP_FORCE_ABORT();
+    //PMEMWRAP_FORCE_ABORT();
 
     // abort();
 

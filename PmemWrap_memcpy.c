@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define THREADS 32
+#define THREADS 1
 #define CACHE_LINE_SIZE 64
 
 //mapped_file1(元のPMDKファイル)にmapped_file2をコピー
@@ -29,10 +29,12 @@ void *normal_memcpy(void *p){
     else
         len = size1 - offset;
 
-    while(len > __INT_MAX__){
-        memcpy(mapped_file1 + offset, mapped_file2 + offset, __INT_MAX__);
-        len -= __INT_MAX__;
-        offset += __INT_MAX__;
+    const size_t memcpy_len_max = __INT_MAX__ / 64 * 64;
+
+    while(len > memcpy_len_max){
+        memcpy(mapped_file1 + offset, mapped_file2 + offset, memcpy_len_max);
+        len -= memcpy_len_max;
+        offset += memcpy_len_max;
     }
 
     memcpy(mapped_file1 + offset, mapped_file2 + offset, len);
@@ -84,6 +86,8 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
+    //fprintf(stderr, "multithread\n");
+
     lseek(fd1, 0, SEEK_SET);
     lseek(fd2, 0, SEEK_SET);
 
@@ -94,6 +98,8 @@ int main(int argc, char *argv[]){
 
     subseed_env = getenv("PMEMWRAP_SEED");
     subseed = atoi(subseed_env);
+
+    unsigned int start = (unsigned int)time(NULL);
 
     int arg[THREADS];
     char* memcpyflag_env = getenv("PMEMWRAP_MEMCPY");
@@ -115,6 +121,9 @@ int main(int argc, char *argv[]){
             pthread_join(pt[i], NULL);
         }
     }
+
+    unsigned int end = (unsigned int)time(NULL);
+    fprintf(stderr, "memcpy time: %d\n", end - start);
 
     close(fd1);
     close(fd2);

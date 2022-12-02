@@ -67,7 +67,9 @@ void write_hello_string (char *buf, char *path)
 
 	printf("1st 64B :%.64s\n", pmemaddr);
 	printf("2nd 64B :%.64s\n", pmemaddr + 64);
-	printf("3rd 64B :%.64s\n", pmemaddr + 128);	
+	printf("3rd 64B :%.64s\n", pmemaddr + 128);
+
+	PMEMWRAP_FORCE_ABORT();
 
 	/* flush above strcpy to persistence */
 	if (is_pmem)
