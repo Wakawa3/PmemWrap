@@ -54,5 +54,6 @@ void force_set_abortflag(const char *file, int line);
 
 #define PMEMWRAP_FORCE_ABORT() force_abort_drain(__FILE__, __LINE__)
 #define PMEMWRAP_SET_ABORTFLAG() force_set_abortflag(__FILE__, __LINE__)
+#define PMEMWRAP_PRINT_OFFSET(__stream, p, p2) fprintf((__stream), "fprint_offset: %lx\n", (p2) - (p))
 
 #endif	/* libpmemobj.h */

@@ -1025,6 +1025,10 @@ void force_set_abortflag(const char *file, int line){
     //
 }
 
+void fprint_offset(FILE *__restrict__ __stream, void *p, void *p2){
+    fprintf(__stream, "fprint_offset: %lx\n", p2 - p);
+}
+
 // void pmemwrap_copy(){
 //     memcpy(head->fake_addr, head->orig_addr, head->len);
 // }

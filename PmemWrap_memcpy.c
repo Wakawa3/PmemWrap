@@ -50,20 +50,84 @@ void *rand_memcpy(void *p){
         to = (i + 1) * size1 / THREADS / 64 * 64; 
     else
         to = size1;
+
+    int series_flag = 0;
+    size_t from_offset = 0;
     
     for(; offset < to; offset += CACHE_LINE_SIZE){
-        if(rand() % 2 == 0){
-            memcpy(mapped_file1 + offset, mapped_file2 + offset, CACHE_LINE_SIZE);
+        if(memcmp(mapped_file1 + offset, mapped_file2 + offset, CACHE_LINE_SIZE) != 0){
+            if(series_flag == 0){
+                from_offset = offset;
+                series_flag = 1;
+            }
+            
+            if(rand() % 2 == 0){
+                memcpy(mapped_file1 + offset, mapped_file2 + offset, CACHE_LINE_SIZE);
+            }
+        }
+        else{
+            if(series_flag == 1){
+                //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
+                series_flag == 0;
+            }
         }
     }
 
     offset -= CACHE_LINE_SIZE;
     size_t remainder = (to - offset) % CACHE_LINE_SIZE;
     if(remainder != 0){
-        if(rand() % 2 == 0){
-            memcpy(mapped_file1 + offset, mapped_file2 + offset, remainder);
+        if(memcmp(mapped_file1 + offset, mapped_file2 + offset, remainder) != 0){
+            if(series_flag == 0){
+                from_offset = offset;
+                series_flag = 1;
+            }
+
+            if(rand() % 2 == 0){
+                memcpy(mapped_file1 + offset, mapped_file2 + offset, remainder);
+            }
+        }
+        if(series_flag == 1){
+            //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
         }
     }
+}
+
+void selected_memcpy(){
+    int fd_s = open("selected_range.txt", O_RDONLY);
+    if(fd_s == -1){
+        fprintf(stderr, "selected_range.txt doesn't exist.\n");
+        return;
+    }
+
+    size_t size_s = lseek(fd_s, 0, SEEK_END);
+    lseek(fd_s, 0, SEEK_SET);
+
+    const size_t memcpy_len_max = __INT_MAX__ / 64 * 64;
+
+    void *mapped_file_s = mmap(NULL, size_s, PROT_READ, MAP_SHARED, fd_s, 0);
+    char *endptr = mapped_file_s - 1;
+    char *startptr;
+    do {
+        startptr = endptr + 1;
+        size_t offset = strtol(startptr, &endptr, 16);
+        startptr = endptr + 1;
+        size_t len = strtol(startptr, &endptr, 16);
+
+        fprintf(stderr, "offset: %lx, len: %lx\n", offset, len);
+
+        size_t to = (offset + len + CACHE_LINE_SIZE - 1) / CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+        offset = offset / CACHE_LINE_SIZE * CACHE_LINE_SIZE;
+        len = to - offset;
+        
+        fprintf(stderr, "2,offset: %lx, len: %lx\n", offset, len);
+
+        while(len > memcpy_len_max){
+            memcpy(mapped_file1 + offset, mapped_file2 + offset, memcpy_len_max);
+            len -= memcpy_len_max;
+            offset += memcpy_len_max;
+        }
+        memcpy(mapped_file1 + offset, mapped_file2 + offset, len);
+    } while(*endptr != '\0' || *(endptr+1) != '\0');
 }
 
 int main(int argc, char *argv[]){
@@ -120,6 +184,9 @@ int main(int argc, char *argv[]){
         for(int i = 0; i < THREADS; i++){
             pthread_join(pt[i], NULL);
         }
+    }
+    else if(strcmp(memcpyflag_env, "SELECTED_MEMCPY") == 0){
+        selected_memcpy();
     }
 
     unsigned int end = (unsigned int)time(NULL);
