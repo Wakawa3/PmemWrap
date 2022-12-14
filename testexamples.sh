@@ -1,4 +1,4 @@
-PM_ROOT=${HOME}/pmdk_1.8/src/examples/libpmemobj
+PM_ROOT=${HOME}/pmdk_orig2/src/examples/libpmemobj
 
 TEST_ROOT=${HOME}/PmemWrap
 
@@ -21,6 +21,7 @@ PATCH_LOC=${TEST_ROOT}/patch/${WORKLOAD}_${PATCH}.patch
 OUT_LOC=${TEST_ROOT}/outputs
 
 PMIMAGE=/mnt/pmem0/${WORKLOAD}_testex
+COPYFILE=${PMIMAGE}_flushed
 
 if [[ ${PATCH} != "nobug" ]]; then
     patch ${WORKLOAD_LOC} < ${PATCH_LOC}
@@ -72,19 +73,21 @@ export PMEMWRAP_WRITECOUNTFILE=ADD
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
 echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
 
-for i in `seq 100`
+for i in `seq 150`
 do
     echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
     export PMEMWRAP_ABORT=1
     export PMEMWRAP_SEED=${i}
-    export PMEMWRAP_MEMCPY=NORMAL_MEMCPY
+    export PMEMWRAP_MEMCPY=RNAD_MEMCPY
     ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-    #./data_store btree /mnt/pmem0/ds_testex 200
+    ${TEST_ROOT}/PmemWrap_memcpy.out ${PMIMAGE} ${COPYFILE}
+
     export PMEMWRAP_ABORT=0
     export PMEMWRAP_MEMCPY=NO_MEMCPY
-    bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt" 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-    rm ${PMIMAGE}
+    timeout -k 1 20 bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt" 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    echo "timeout $?" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    rm ${PMIMAGE} ${COPYFILE}
     echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
     echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
 done

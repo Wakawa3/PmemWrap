@@ -4,6 +4,7 @@
 
 #define ABORTFLAG_COEFFICIENT 10
 #define ABORTFLAG_COEFFICIENT2 100
+#define ABORTCOUNT_LOOP 50
 
 PMEMaddrset *head = NULL;
 PMEMaddrset *tail = NULL;
@@ -29,6 +30,7 @@ int (*orig_pmem_deep_drain)(const void *, size_t);
 int pmemwrap_abort = 0;
 int abortflag = 0;
 int memcpyflag = NORMAL_MEMCPY;
+int abort_count_minus = 0;
 
 int rand_set_count = 0;
 int subseed = 0;
@@ -39,8 +41,11 @@ pthread_mutex_t mutex;//plus_persistcount rand_set_abortflag add_PMEMaddrset del
 __attribute__ ((constructor))
 static void constructor () {
     char* seedenv = getenv("PMEMWRAP_SEED");
-    if(seedenv != NULL)
-        subseed = atoi(seedenv) * 1000000;
+    if(seedenv != NULL){
+        int seednum = atoi(seedenv);
+        subseed = seednum * 1000000;
+        abort_count_minus = seednum / ABORTCOUNT_LOOP;
+    }
 
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
     memset(persist_line_list, 0, sizeof(LINEinfo) * MAX_FILE_LENGTH * MAX_LINE_LENGTH);
@@ -330,7 +335,7 @@ void rand_set_abortflag(const char *file, int line){
                 int rand_num = rand();
                 double probability = (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
                 if (abort_count_sum != 0){
-                    for(int j=0; j<persist_line_list[file_id][i].abort_count; j++)
+                    for(int j=0; j<persist_line_list[file_id][i].abort_count - abort_count_minus; j++)
                         probability *= 1 / (double)ABORTFLAG_COEFFICIENT2;
                 }
                     
@@ -1011,11 +1016,13 @@ int pmem_deep_drain(const void *addr, size_t len){
 
 
 void force_abort_drain(const char *file, int line){
-    abortflag = 1;
-    //正しい挙動
-    fprintf(stderr, "FORCE set abortflag file: %s, line: %d\n", file, line);
-    //
-    pmem_drain();
+    if(pmemwrap_abort == 1){
+        abortflag = 1;
+        //正しい挙動
+        fprintf(stderr, "FORCE set abortflag file: %s, line: %d\n", file, line);
+        //
+        pmem_drain();
+    }
 }
 
 void force_set_abortflag(const char *file, int line){

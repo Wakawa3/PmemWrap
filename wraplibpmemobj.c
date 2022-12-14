@@ -12,6 +12,7 @@ void (*orig_pmemobj_close)(PMEMobjpool *pop);
 int (*orig_pmemobj_alloc)(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t type_num, pmemobj_constr constructor, void *arg);
 int (*orig_pmemobj_zalloc)(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t type_num);
 int (*orig_pmemobj_realloc)(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t type_num);
+void *(*orig_pmemobj_direct)(PMEMoid oid);
 PMEMoid (*orig_pmemobj_tx_alloc)(size_t size, uint64_t type_num);
 PMEMoid (*orig_pmemobj_tx_zalloc)(size_t size, uint64_t type_num);
 
@@ -71,6 +72,11 @@ static void constructor_obj () {
 
     if((orig_pmemobj_realloc = dlsym(dlopen_val, "pmemobj_realloc")) == NULL){
         fprintf(stderr, "orig_pmemobj_realloc: %p\n%s\n", orig_pmemobj_realloc, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmemobj_direct = dlsym(dlopen_val, "pmemobj_direct")) == NULL){
+        fprintf(stderr, "orig_pmemobj_direct: %p\n%s\n", orig_pmemobj_direct, dlerror());
         exit(1);
     }
 
@@ -135,8 +141,8 @@ void pmemobj_wrap_drain(PMEMobjpool *pop, const char *file, int line){
 
 int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, const char *file, int line){
     // printf("****wrap pmemobj_wrap_tx_add_range****\n");
-    //plus_persistcount(file, line);
-    //rand_set_abortflag(file, line);
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
     int ret = orig_pmemobj_tx_add_range(oid, hoff, size);
     // printf("****end pmemobj_wrap_tx_add_range****\n");
     return ret;
@@ -145,6 +151,8 @@ int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, const cha
 int pmemobj_wrap_tx_add_range_direct(const void *ptr, size_t size, const char *file, int line){
     plus_persistcount(file, line);
     rand_set_abortflag(file, line);
+    if(abortflag == 1) pmem_drain();
+    
     return orig_pmemobj_tx_add_range_direct(ptr, size);
 }
 
@@ -221,6 +229,14 @@ int pmemobj_wrap_realloc(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t 
     plus_persistcount(file, line);
     rand_set_abortflag(file, line);
     return orig_pmemobj_realloc(pop, oidp, size, type_num);
+}
+
+void *pmemobj_wrap_direct(PMEMoid oid, const char *file, int line){
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
+    if(abortflag == 1) pmem_drain();
+    
+    return orig_pmemobj_direct(oid);
 }
 
 PMEMoid pmemobj_wrap_tx_alloc(size_t size, uint64_t type_num, const char *file, int line){

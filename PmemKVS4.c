@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <libpmemobj.h>
-#include "libpmem.h"
+#include <libpmem.h>
 //#include "pmemopenwrap.h"
 
 // Name of our layout in the pool
@@ -122,7 +122,7 @@ void write_KVS (char *key, int value)
 
     struct KVstruct tests;
     printf("&tests: %p, &(tests.number): %p\n", &tests, &(tests.number));
-    printf("D_RO(root): %p, &(D_RO(root)->number): %p\n", D_RO(root), &(D_RO(root)->number));
+    printf("D_RO(root): %p, &(D_RO(root)->number): %p, pmemobj_root: %p\n", D_RO(root), &(D_RO(root)->number), pmemobj_direct(pmemobj_root(pop, 64)));
     
 
     TX_BEGIN(pop){

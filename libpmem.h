@@ -148,6 +148,7 @@ const wchar_t *pmem_errormsgW(void);
 
 void force_abort_drain(const char *file, int line);
 void force_set_abortflag(const char *file, int line);
+void rand_set_abortflag(const char *file, int line);
 
 #define pmem_persist(addr, len) pmem_wrap_persist((addr), (len), __FILE__, __LINE__)
 #define pmem_msync(addr, len) pmem_wrap_msync((addr), (len), __FILE__, __LINE__)
@@ -162,6 +163,6 @@ void force_set_abortflag(const char *file, int line);
 #define PMEMWRAP_FORCE_ABORT() force_abort_drain(__FILE__, __LINE__)
 #define PMEMWRAP_SET_ABORTFLAG() force_set_abortflag(__FILE__, __LINE__)
 #define PMEMWRAP_PRINT_OFFSET(__stream, p, p2) fprintf((__stream), "fprint_offset: %lx\n", (p2) - (p))
-
+#define PMEMWRAP_RAND_SET_ABORTFLAG()  rand_set_abortflag(__FILE__, __LINE__)
 
 #endif	/* libpmem.h */
