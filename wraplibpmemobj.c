@@ -149,13 +149,23 @@ int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, const cha
 }
 
 int pmemobj_wrap_tx_add_range_direct(const void *ptr, size_t size, const char *file, int line){
+    //printf("add_range_direct start\n");
     plus_persistcount(file, line);
     rand_set_abortflag(file, line);
-    if(abortflag == 1) pmem_drain();
+    //if(abortflag == 1) pmem_drain();
     
+    //printf("add_range_direct end\n");
     return orig_pmemobj_tx_add_range_direct(ptr, size);
 }
 
+
+void pmemobj_wrap_close(PMEMobjpool *pop, const char *file, int line){
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
+    delete_PMEMaddrset(pop);
+    
+    orig_pmemobj_close(pop);
+}
 
 void pmemobj_close(PMEMobjpool *pop){
     delete_PMEMaddrset(pop);

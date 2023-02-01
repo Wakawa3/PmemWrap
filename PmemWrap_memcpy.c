@@ -67,8 +67,8 @@ void *rand_memcpy(void *p){
         }
         else{
             if(series_flag == 1){
-                //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
-                series_flag == 0;
+                printf("diff range: %lx - %lx\n", from_offset, offset);
+                series_flag = 0;
             }
         }
     }
@@ -87,7 +87,7 @@ void *rand_memcpy(void *p){
             }
         }
         if(series_flag == 1){
-            //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
+            printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
         }
     }
 }

@@ -4,7 +4,6 @@
 
 #define ABORTFLAG_COEFFICIENT 10
 #define ABORTFLAG_COEFFICIENT2 100
-#define ABORTCOUNT_LOOP 50
 
 PMEMaddrset *head = NULL;
 PMEMaddrset *tail = NULL;
@@ -41,10 +40,14 @@ pthread_mutex_t mutex;//plus_persistcount rand_set_abortflag add_PMEMaddrset del
 __attribute__ ((constructor))
 static void constructor () {
     char* seedenv = getenv("PMEMWRAP_SEED");
+    char* abortcount_loop_env = getenv("PMEMWRAP_ABORTCOUNT_LOOP");
     if(seedenv != NULL){
         int seednum = atoi(seedenv);
         subseed = seednum * 1000000;
-        abort_count_minus = seednum / ABORTCOUNT_LOOP;
+        if(abortcount_loop_env != NULL)
+            abort_count_minus = seednum / atoi(abortcount_loop_env);
+        else
+            abort_count_minus = seednum / 50;
     }
 
     memset(file_list, 0, sizeof(char *) * MAX_FILE_LENGTH);
@@ -305,6 +308,7 @@ void write_persistcountfile(){
 void rand_set_abortflag(const char *file, int line){
     //printf("wrap rand_set_abortflag\n");
     if(pmemwrap_abort == 0){
+        //fprintf(stderr, "DEBUG file: %s, line: %d\n", file, line);
         return;
     }
 
@@ -498,6 +502,15 @@ void delete_PMEMaddrset(void *addr){
     return;
 }
 
+int pmem_wrap_unmap(void *addr, size_t len, const char *file, int line){
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
+
+    delete_PMEMaddrset(addr);
+
+    return orig_pmem_unmap(addr, len);
+}
+
 int pmem_unmap(void *addr, size_t len){
     // printf("wrap pmem_unmap\n");
     //int (*orig_pmem_unmap)(void*, size_t) = dlsym(RTLD_NEXT, "pmem_unmap");
@@ -666,6 +679,7 @@ static void destructor () {
         //printf("%c\n", *(char*)set->fake_addr);
         munmap(set->fake_addr, set->len);
         close(set->flushed_copyfile_fd);
+        remove(set->flushed_copyfile_path);
         set = set->next;
     }
 
@@ -1016,13 +1030,13 @@ int pmem_deep_drain(const void *addr, size_t len){
 
 
 void force_abort_drain(const char *file, int line){
-    if(pmemwrap_abort == 1){
+    // if(pmemwrap_abort == 1){
         abortflag = 1;
         //正しい挙動
         fprintf(stderr, "FORCE set abortflag file: %s, line: %d\n", file, line);
         //
         pmem_drain();
-    }
+    // }
 }
 
 void force_set_abortflag(const char *file, int line){
@@ -1034,6 +1048,19 @@ void force_set_abortflag(const char *file, int line){
 
 void fprint_offset(FILE *__restrict__ __stream, void *p, void *p2){
     fprintf(__stream, "fprint_offset: %lx\n", p2 - p);
+}
+
+void pmem_drain_nowrap(){
+    pmem_drain();
+}
+
+void rand_set_abortflag_plus_persistcount(const char *file, int line){
+    plus_persistcount(file, line);
+    rand_set_abortflag(file, line);
+}
+
+void debug_print_line(const char *file, int line){
+    fprintf(stderr, "debug_print_line, file: %s, line: %d\n", file, line);
 }
 
 // void pmemwrap_copy(){

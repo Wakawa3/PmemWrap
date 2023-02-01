@@ -2,9 +2,12 @@ PM_ROOT=${HOME}/pmdk_orig2/src/examples/libpmemobj
 
 TEST_ROOT=${HOME}/PmemWrap
 
+MEMCPY_TYPE=NO
+MEMCPY_TYPE=$1
+
 #WORKLOAD=btree
-WORKLOAD=$1
-PATCH=$2
+WORKLOAD=$2
+PATCH=$3
 
 if [[ ${WORKLOAD} =~ ^(btree|rbtree|ctree)$ ]]; then
 	if [[ ${PATCH} != "" && ${PATCH} != "hash" ]]; then
@@ -69,27 +72,36 @@ export PMEMWRAP_WRITECOUNTFILE=YES
 export PMEMWRAP_MEMCPY=NO_MEMCPY
 ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null
 export PMEMWRAP_WRITECOUNTFILE=ADD
+export PMEMWRAP_ABORTCOUNT_LOOP=20
 
-echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
+# ABORT_TEXT=${OUT_LOC}/${BIN}_${PMEMWRAP_MEMCPY}_abort.txt
+# ERROR_TEXT=${OUT_LOC}/${BIN}_${PMEMWRAP_MEMCPY}_error.txt
 
-for i in `seq 150`
+ABORT_TEXT=${OUT_LOC}/${WORKLOAD}_${PATCH}_${MEMCPY_TYPE}_abort.txt
+ERROR_TEXT=${OUT_LOC}/${WORKLOAD}_${PATCH}_${MEMCPY_TYPE}_error.txt
+
+# echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+# echo "" > ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
+
+echo "" > ${ABORT_TEXT}
+echo "" > ${ERROR_TEXT}
+for i in `seq 100`
 do
-    echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-    echo "${i}" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
+    echo "${i}" >> ${ABORT_TEXT}
+    echo "${i}" >> ${ERROR_TEXT}
     export PMEMWRAP_ABORT=1
     export PMEMWRAP_SEED=${i}
-    export PMEMWRAP_MEMCPY=RNAD_MEMCPY
-    ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    export PMEMWRAP_MEMCPY=${MEMCPY_TYPE}_MEMCPY
+    ${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${ABORT_TEXT}
     ${TEST_ROOT}/PmemWrap_memcpy.out ${PMIMAGE} ${COPYFILE}
 
     export PMEMWRAP_ABORT=0
     export PMEMWRAP_MEMCPY=NO_MEMCPY
-    timeout -k 1 20 bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt" 2>> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-    echo "timeout $?" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
+    timeout -k 1 20 bash -c "${PM_ROOT}/map/data_store ${WORKLOAD} ${PMIMAGE} 200 > /dev/null 2>> ${ERROR_TEXT}" 2>> ${ABORT_TEXT}
+    echo "timeout $?" >> ${ABORT_TEXT}
     rm ${PMIMAGE} ${COPYFILE}
-    echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_abort.txt
-    echo "" >> ${OUT_LOC}/${WORKLOAD}_${PATCH}_error.txt
+    echo "" >> ${ABORT_TEXT}
+    echo "" >> ${ERROR_TEXT}
 done
 
 #rm countfile.txt

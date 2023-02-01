@@ -69,9 +69,9 @@ TOID(struct KVstruct){
 
 typedef uint8_t KVstruct_toid_type_num[(0) + 1];
 union KVstruct_toid{
-    PMEMoid oid;
-    struct KVstruct *_type;
-    KVstruct_toid_type_num *_type_num;
+    PMEMoid oid; //8 + 8バイト
+    struct KVstruct *_type; //8バイト?
+    KVstruct_toid_type_num *_type_num; //1バイト
 };
 
 */

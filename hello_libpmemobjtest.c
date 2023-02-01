@@ -55,10 +55,12 @@ void write_hello_string (char *buf, char *path, char *set_chars)
 	// Copy string and persist it
 
 	TX_BEGIN(pop){
-		pmemobj_tx_add_range(root, 0, 32);
+		printf("rootp: %p\n", rootp);
+		//pmemobj_tx_add_range_direct(rootp, 32);
 		memset(rootp, set_chars[0], 64);
 		memset(rootp->buf2, set_chars[1], 64);
 		memset(rootp->buf3, set_chars[2], 64);
+		//PMEMWRAP_FORCE_ABORT();
 	}TX_END
 
 	//pmemobj_memcpy_persist(pop, rootp->buf, buf, MAX_BUF_LEN * 32);
@@ -69,7 +71,7 @@ void write_hello_string (char *buf, char *path, char *set_chars)
 	printf("3rd 64B :%.64s\n", rootp->buf3);
 	
 	// Close PMEM object pool
-	pmemobj_close(pop);	
+	//pmemobj_close(pop);	
 		
 	return;
 }

@@ -59,7 +59,10 @@ void *pmem_map_fileW(const wchar_t *path, size_t len, int flags, mode_t mode,
 	size_t *mapped_lenp, int *is_pmemp);
 #endif
 
+//
+int pmem_wrap_unmap(void *addr, size_t len, const char *file, int line);
 int pmem_unmap(void *addr, size_t len);
+//
 int pmem_is_pmem(const void *addr, size_t len);
 //
 void pmem_wrap_persist(const void *addr, size_t len, const char *file, int line);
@@ -148,7 +151,9 @@ const wchar_t *pmem_errormsgW(void);
 
 void force_abort_drain(const char *file, int line);
 void force_set_abortflag(const char *file, int line);
-void rand_set_abortflag(const char *file, int line);
+void rand_set_abortflag_plus_persistcount(const char *file, int line);
+void pmem_drain_nowrap();
+void debug_print_line(const char *file, int line);
 
 #define pmem_persist(addr, len) pmem_wrap_persist((addr), (len), __FILE__, __LINE__)
 #define pmem_msync(addr, len) pmem_wrap_msync((addr), (len), __FILE__, __LINE__)
@@ -158,11 +163,14 @@ void rand_set_abortflag(const char *file, int line);
 #define pmem_memmove(pmemdest, src, len, flags) pmem_wrap_memmove((pmemdest), (src), (len), (flags), __FILE__, __LINE__)
 #define pmem_memcpy(pmemdest, src, len, flags) pmem_wrap_memcpy((pmemdest), (src), (len), (flags), __FILE__, __LINE__)
 #define pmem_memset(pmemdest, c, len, flags) pmem_wrap_memset((pmemdest), (c), (len), (flags), __FILE__, __LINE__)
+#define pmem_unmap(addr, len) pmem_wrap_unmap((addr), (len),  __FILE__, __LINE__)
 #define pmem_drain() pmem_wrap_drain(__FILE__, __LINE__)
 
 #define PMEMWRAP_FORCE_ABORT() force_abort_drain(__FILE__, __LINE__)
 #define PMEMWRAP_SET_ABORTFLAG() force_set_abortflag(__FILE__, __LINE__)
 #define PMEMWRAP_PRINT_OFFSET(__stream, p, p2) fprintf((__stream), "fprint_offset: %lx\n", (p2) - (p))
-#define PMEMWRAP_RAND_SET_ABORTFLAG()  rand_set_abortflag(__FILE__, __LINE__)
+#define PMEMWRAP_RAND_SET_ABORTFLAG() rand_set_abortflag_plus_persistcount(__FILE__, __LINE__)
+#define PMEMWRAP_DRAIN_NOWRAP() pmem_drain_nowrap()
+#define PMEMWRAP_PRINT_LINE() debug_print_line(__FILE__, __LINE__)
 
 #endif	/* libpmem.h */
