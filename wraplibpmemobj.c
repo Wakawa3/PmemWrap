@@ -18,7 +18,13 @@ PMEMoid (*orig_pmemobj_tx_zalloc)(size_t size, uint64_t type_num);
 
 __attribute__ ((constructor))
 static void constructor_obj () {
-    void *dlopen_val = dlopen("/home/satoshi/testlib/lib/libpmemobj.so.1", RTLD_NOW);
+    char *solib_path = getenv("PMEMWRAP_SOLIB_PATH");
+    char sofile_path[1024];
+    sprintf(sofile_path, "%s%s", solib_path, "/libpmemobj.so.1");
+    void *dlopen_val = dlopen(sofile_path, RTLD_NOW);
+
+    // void *dlopen_val = dlopen("/home/satoshi/testlib/lib/libpmemobj.so.1", RTLD_NOW);
+    // void *dlopen_val = dlopen("/home/satoshi/safepm/build/pmdk/install/lib/pmdk_debug/libpmemobj.so.1", RTLD_NOW);
 
     if((orig_pmemobj_create = dlsym(dlopen_val, "pmemobj_create")) == NULL){
         fprintf(stderr, "orig_pmemobj_create: %p\n%s\n", orig_pmemobj_create, dlerror());
@@ -91,13 +97,13 @@ static void constructor_obj () {
     }
 }
 
-void *addr;
-size_t size;
+// void *addr;
+// size_t size;
 
 PMEMobjpool *pmemobj_create(const char *path, const char *layout, size_t poolsize, mode_t mode){
     // printf("****wrap pmemobj_create****\n");
-    addr = orig_pmemobj_create(path, layout, poolsize, mode);
-    size = poolsize;
+    void *addr = orig_pmemobj_create(path, layout, poolsize, mode);
+    size_t size = poolsize;
     // printf("addr: %p, size: %lu\n", addr, size);
     if(addr != NULL){
         add_PMEMaddrset(addr, poolsize, path, PMEMOBJ_FILE);
@@ -110,10 +116,10 @@ PMEMobjpool *pmemobj_open(const char *path, const char *layout){
     // printf("****wrap pmemobj_open****\n");
 
     int fd = open(path, O_RDONLY);
-    size = lseek(fd, 0, SEEK_END);
+    size_t size = lseek(fd, 0, SEEK_END);
     close(fd);
 
-    addr = orig_pmemobj_open(path, layout);
+    void *addr = orig_pmemobj_open(path, layout);
     // printf("addr: %p, size: %lu\n", addr, size);
 
     if(addr != NULL){
@@ -162,6 +168,9 @@ int pmemobj_wrap_tx_add_range_direct(const void *ptr, size_t size, const char *f
 void pmemobj_wrap_close(PMEMobjpool *pop, const char *file, int line){
     plus_persistcount(file, line);
     rand_set_abortflag(file, line);
+    if(abortflag == 1){
+        pmem_drain();
+    }
     delete_PMEMaddrset(pop);
     
     orig_pmemobj_close(pop);

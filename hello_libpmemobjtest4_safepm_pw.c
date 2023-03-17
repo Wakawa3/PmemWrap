@@ -71,7 +71,10 @@ int main(int argc, char *argv[])
 			D_RW(object2)->partner = object1;
 		}TX_END
 
+		// POBJ_FREE(&object1);
+		
 		PMEMWRAP_FORCE_ABORT();
+		// abort();
 	}
 	
 	else{

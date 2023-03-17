@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "libpmemobj.h"
+#include <libpmemobj.h>
 
 // Name of our layout in the pool
 #define LAYOUT "hello_layout"
@@ -64,6 +64,8 @@ int main(int argc, char *argv[])
 		pmemobj_persist(pop, D_RW(object1), sizeof(struct myobject));
 		pmemobj_persist(pop, D_RW(object2), sizeof(struct myobject));
 
+		memcpy(D_RW(object2), pop, sizeof(struct myobject));
+
 		TX_BEGIN(pop){
 			// TX_ADD(object1);
 			// TX_ADD(object2);
@@ -71,7 +73,10 @@ int main(int argc, char *argv[])
 			D_RW(object2)->partner = object1;
 		}TX_END
 
-		PMEMWRAP_FORCE_ABORT();
+		// POBJ_FREE(&object1);
+		
+		// PMEMWRAP_FORCE_ABORT();
+		abort();
 	}
 	
 	else{

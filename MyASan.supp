@@ -1,0 +1,2 @@
+interceptor_via_fun:add_PMEMaddrset
+interceptor_via_fun:pmem_drain

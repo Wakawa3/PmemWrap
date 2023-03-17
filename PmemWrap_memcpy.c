@@ -20,9 +20,12 @@ void *mapped_file1, *mapped_file2;
 int subseed = 0;
 char *subseed_env;
 
+int is_obj = 0;
+
 void *normal_memcpy(void *p){
     int i = *(int*)p;
     size_t offset = i * size1 / THREADS / 64 * 64;
+    if(is_obj && (offset < 4096)) offset = 4096;
     size_t len;
     if(i != THREADS - 1)
         len = (i + 1) * size1 / THREADS / 64 * 64 - offset; 
@@ -45,6 +48,7 @@ void *rand_memcpy(void *p){
     srand((unsigned int)time(NULL) + subseed + i * 10000);
 
     size_t offset = i * size1 / THREADS / 64 * 64;
+    if(is_obj && (offset < 4096)) {offset = 4096; printf("is_obj\n");}
     size_t to;
     if(i != THREADS - 1)
         to = (i + 1) * size1 / THREADS / 64 * 64; 
@@ -67,7 +71,7 @@ void *rand_memcpy(void *p){
         }
         else{
             if(series_flag == 1){
-                printf("diff range: %lx - %lx\n", from_offset, offset);
+                //printf("diff range: %lx - %lx\n", from_offset, offset);
                 series_flag = 0;
             }
         }
@@ -87,7 +91,7 @@ void *rand_memcpy(void *p){
             }
         }
         if(series_flag == 1){
-            printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
+            //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
         }
     }
 }
@@ -149,6 +153,8 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "PmemWrap_memcpy: != size\n");
         exit(1);
     }
+
+    if(argc == 4 && (strcmp(argv[3], "obj") == 0)) is_obj = 1;
 
     //fprintf(stderr, "multithread\n");
 

@@ -75,7 +75,13 @@ static void constructor () {
         memcpyflag = NORMAL_MEMCPY;
     }
 
-    void *dlopen_val = dlopen("/home/satoshi/testlib/lib/libpmem.so.1", RTLD_NOW);
+    char *solib_path = getenv("PMEMWRAP_SOLIB_PATH");
+    char sofile_path[1024];
+    sprintf(sofile_path, "%s%s", solib_path, "/libpmem.so.1");
+    void *dlopen_val = dlopen(sofile_path, RTLD_NOW);
+
+    // void *dlopen_val = dlopen("/home/satoshi/testlib/lib/libpmem.so.1", RTLD_NOW);
+    // void *dlopen_val = dlopen("/home/satoshi/safepm/build/pmdk/install/lib/pmdk_debug/libpmem.so.1", RTLD_NOW);
 
     if((orig_pmem_map_file = dlsym(dlopen_val, "pmem_map_file")) == NULL){
         fprintf(stderr, "orig_pmem_map_file: %p\n%s\n", orig_pmem_map_file, dlerror());
@@ -390,11 +396,15 @@ void add_PMEMaddrset(void *orig_addr, size_t len, const char *path, int file_typ
 
     addrset->flushed_copyfile_path = malloc(MAX_PATH_LENGTH);
     sprintf(addrset->flushed_copyfile_path, "%s%s", path, COPYFILE_WORDENDING);
-    addrset->flushed_copyfile_fd = open(addrset->flushed_copyfile_path, (O_RDWR | O_CREAT), 0666);
-    fallocate(addrset->flushed_copyfile_fd, 0, 0, len);
-    addrset->fake_addr = mmap(NULL, len, PROT_WRITE, MAP_SHARED, addrset->flushed_copyfile_fd, 0);
-
-    //addrset->fake_addr = aligned_alloc(LIBPMEMMAP_ALIGN_VAL, len);
+    // addrset->flushed_copyfile_fd = open(addrset->flushed_copyfile_path, (O_RDWR | O_CREAT), 0666);
+    // fallocate(addrset->flushed_copyfile_fd, 0, 0, len);
+    addrset->fake_addr = orig_pmem_map_file(addrset->flushed_copyfile_path, len, (1 << 0)/*PMEM_FILE_CREATE*/, 0666, NULL, NULL);
+    // for(size_t i=0; i<len; i++){
+    //     if(*((char*)addrset->fake_addr + i) != 0){
+    //         printf("i: %ld\n", i);
+    //     }
+    // }
+    // addrset->fake_addr = mmap(NULL, len, PROT_WRITE, MAP_SHARED, addrset->flushed_copyfile_fd, 0);
 
     if(addrset->fake_addr == NULL){
         perror(__func__);
@@ -406,8 +416,18 @@ void add_PMEMaddrset(void *orig_addr, size_t len, const char *path, int file_typ
     addrset->prev = tail;
     addrset->len = len;
     addrset->file_type = file_type;
+    unsigned char vector[4];
+    printf("mincore: %d, pagesize: %ld\n", mincore(addrset->orig_addr, sysconf(_SC_PAGESIZE) * 4, vector), sysconf(_SC_PAGESIZE));
+    printf("vector: %d %d %d %d\n", vector[0],vector[1],vector[2],vector[3]);
     if(memcpyflag != NO_MEMCPY)
-        memcpy(addrset->fake_addr, addrset->orig_addr, len);
+        if(file_type == PMEM_FILE){
+            memcpy(addrset->fake_addr, addrset->orig_addr, len);
+        }
+        else{//file_type == PMEMOBJ_FILE
+            // memset(addrset->orig_addr, 1, len);
+            // memcpy(addrset->fake_addr, addrset->orig_addr, len);
+            memcpy(addrset->fake_addr + 4096, addrset->orig_addr + 4096, len - 4096);
+        }
 
     if(head == NULL){
         head = addrset;
@@ -486,11 +506,11 @@ void delete_PMEMaddrset(void *addr){
                 set->prev->next = set->next;
                 set->next->prev = set->prev;
             }
-            munmap(set->fake_addr, set->len);
-            close(set->flushed_copyfile_fd);
+            // munmap(set->fake_addr, set->len);
+            // close(set->flushed_copyfile_fd);
+            orig_pmem_unmap(set->fake_addr, set->len);
             remove(set->flushed_copyfile_path);
             free(set->flushed_copyfile_path);
-            //free(set->fake_addr);
             free(set);
             pthread_mutex_unlock(&mutex);
             return;
@@ -505,7 +525,9 @@ void delete_PMEMaddrset(void *addr){
 int pmem_wrap_unmap(void *addr, size_t len, const char *file, int line){
     plus_persistcount(file, line);
     rand_set_abortflag(file, line);
-
+    if(abortflag == 1){
+        pmem_drain();
+    }
     delete_PMEMaddrset(addr);
 
     return orig_pmem_unmap(addr, len);
@@ -677,8 +699,9 @@ static void destructor () {
 
     while(set != NULL){
         //printf("%c\n", *(char*)set->fake_addr);
-        munmap(set->fake_addr, set->len);
-        close(set->flushed_copyfile_fd);
+        // munmap(set->fake_addr, set->len);
+        // close(set->flushed_copyfile_fd);
+        orig_pmem_unmap(set->fake_addr, set->len);
         remove(set->flushed_copyfile_path);
         set = set->next;
     }
@@ -986,10 +1009,18 @@ void pmem_drain(){//waitdrainに入れたものだけをdrain
                 //     rand_memcpy(set);
                 // }
             //}
-            munmap(set->fake_addr, set->len);
-            close(set->flushed_copyfile_fd);
+            // munmap(set->fake_addr, set->len);
+            // close(set->flushed_copyfile_fd);
+            orig_pmem_flush(set->fake_addr, set->len);
+            orig_pmem_drain();
+            orig_pmem_unmap(set->fake_addr, set->len);
 
-            orig_pmem_flush(set->orig_addr, set->len);
+            if(set->file_type == PMEM_FILE){
+                orig_pmem_flush(set->orig_addr, set->len);
+            }
+            else{//set->file_type == PMEMOBJ_FILE
+                orig_pmem_flush(set->orig_addr + 4096, set->len - 4096);
+            }
             orig_pmem_drain();
             set = set->next;
         }
