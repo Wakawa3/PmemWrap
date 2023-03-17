@@ -102,6 +102,7 @@ static void constructor_obj () {
 
 PMEMobjpool *pmemobj_create(const char *path, const char *layout, size_t poolsize, mode_t mode){
     // printf("****wrap pmemobj_create****\n");
+    poolsize -= poolsize%(4096*8);
     void *addr = orig_pmemobj_create(path, layout, poolsize, mode);
     size_t size = poolsize;
     // printf("addr: %p, size: %lu\n", addr, size);
