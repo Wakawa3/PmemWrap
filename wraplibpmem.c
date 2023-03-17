@@ -26,6 +26,16 @@ void (*orig_pmem_flush)(const void *, size_t);
 void (*orig_pmem_drain)();
 int (*orig_pmem_deep_drain)(const void *, size_t);
 
+void *(*orig_pmem_memmove_persist)(void *pmemdest, const void *src, size_t len);
+void *(*orig_pmem_memcpy_persist)(void *pmemdest, const void *src, size_t len);
+void *(*orig_pmem_memset_persist)(void *pmemdest, int c, size_t len);
+void *(*orig_pmem_memmove_nodrain)(void *pmemdest, const void *src, size_t len);
+void *(*orig_pmem_memcpy_nodrain)(void *pmemdest, const void *src, size_t len);
+void *(*orig_pmem_memset_nodrain)(void *pmemdest, int c, size_t len);
+void *(*orig_pmem_memmove)(void *pmemdest, const void *src, size_t len, unsigned flags);
+void *(*orig_pmem_memcpy)(void *pmemdest, const void *src, size_t len, unsigned flags);
+void *(*orig_pmem_memset)(void *pmemdest, int c, size_t len, unsigned flags);
+
 int pmemwrap_abort = 0;
 int abortflag = 0;
 int memcpyflag = NORMAL_MEMCPY;
@@ -110,6 +120,51 @@ static void constructor () {
 
     if((orig_pmem_deep_drain = dlsym(dlopen_val, "pmem_deep_drain")) == NULL){
         fprintf(stderr, "orig_pmem_deep_drain: %p\n%s\n", orig_pmem_deep_drain, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_memmove_persist = dlsym(dlopen_val, "pmem_memmove_persist")) == NULL){
+        fprintf(stderr, "orig_pmem_memmove_persist: %p\n%s\n", orig_pmem_memmove_persist, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_memcpy_persist = dlsym(dlopen_val, "pmem_memcpy_persist")) == NULL){
+        fprintf(stderr, "orig_pmem_memcpy_persist: %p\n%s\n", orig_pmem_memcpy_persist, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_memset_persist = dlsym(dlopen_val, "pmem_memset_persist")) == NULL){
+        fprintf(stderr, "orig_pmem_memset_persist: %p\n%s\n", orig_pmem_memset_persist, dlerror());
+        exit(1);
+    }
+
+    // if((orig_pmem_memmove_nodrain = dlsym(dlopen_val, "pmem_memmove_nodrain")) == NULL){
+    //     fprintf(stderr, "orig_pmem_memmove_nodrain: %p\n%s\n", orig_pmem_memmove_nodrain, dlerror());
+    //     exit(1);
+    // }
+
+    // if((orig_pmem_memcpy_nodrain = dlsym(dlopen_val, "pmem_memcpy_nodrain")) == NULL){
+    //     fprintf(stderr, "orig_pmem_memcpy_nodrain: %p\n%s\n", orig_pmem_memcpy_nodrain, dlerror());
+    //     exit(1);
+    // }
+
+    // if((orig_pmem_memset_nodrain = dlsym(dlopen_val, "pmem_memset_nodrain")) == NULL){
+    //     fprintf(stderr, "orig_pmem_memset_nodrain: %p\n%s\n", orig_pmem_memset_nodrain, dlerror());
+    //     exit(1);
+    // }
+
+    if((orig_pmem_memmove = dlsym(dlopen_val, "pmem_memmove")) == NULL){
+        fprintf(stderr, "orig_pmem_memmove: %p\n%s\n", orig_pmem_memmove, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_memcpy = dlsym(dlopen_val, "pmem_memcpy")) == NULL){
+        fprintf(stderr, "orig_pmem_memcpy: %p\n%s\n", orig_pmem_memcpy, dlerror());
+        exit(1);
+    }
+
+    if((orig_pmem_memset = dlsym(dlopen_val, "pmem_memset")) == NULL){
+        fprintf(stderr, "orig_pmem_memset: %p\n%s\n", orig_pmem_memset, dlerror());
         exit(1);
     }
 }
@@ -778,101 +833,80 @@ void add_waitdrainlist(const void *addr, size_t len){
 
 void *pmem_wrap_memmove_persist(void *pmemdest, const void *src, size_t len, const char *file, int line){
     // printf("wrap pmem_wrap_memmove_persist\n");
-    void *ret = memmove(pmemdest, src, len);
-    pmem_wrap_persist(pmemdest, len, file, line);
-    return ret;
+    rand_set_abortflag_plus_persistcount(file, line);
+    return orig_pmem_memmove_persist(pmemdest, src, len);
 }
 
 void *pmem_wrap_memcpy_persist(void *pmemdest, const void *src, size_t len, const char *file, int line){
     // printf("wrap pmem_wrap_memcpy_persist\n");
-    void *ret = memcpy(pmemdest, src, len);
-    pmem_wrap_persist(pmemdest, len, file, line);
-    return ret;
+    rand_set_abortflag_plus_persistcount(file, line);
+    return orig_pmem_memcpy_persist(pmemdest, src, len);
 }
 
 void *pmem_wrap_memset_persist(void *pmemdest, int c, size_t len, const char *file, int line){
     // printf("wrap pmem_wrap_memset_persist\n");
-    void *ret = memset(pmemdest, c, len);
-    pmem_wrap_persist(pmemdest, len, file, line);
-    return ret;
+    rand_set_abortflag_plus_persistcount(file, line);
+    return orig_pmem_memset_persist(pmemdest, c, len);
 }
 
-void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len){
-    // printf("wrap pmem_memmove_persist\n");
-    void *ret = memmove(pmemdest, src, len);
-    pmem_persist(pmemdest, len);
-    return ret;
-}
+// void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len){
+//     // printf("wrap pmem_memmove_persist\n");
+//     void *ret = memmove(pmemdest, src, len);
+//     pmem_persist(pmemdest, len);
+//     return ret;
+// }
 
-void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len){
-    // printf("wrap pmem_memcpy_persist\n");
-    void *ret = memcpy(pmemdest, src, len);
-    pmem_persist(pmemdest, len);
-    return ret;
-}
+// void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len){
+//     // printf("wrap pmem_memcpy_persist\n");
+//     void *ret = memcpy(pmemdest, src, len);
+//     pmem_persist(pmemdest, len);
+//     return ret;
+// }
 
-void *pmem_memset_persist(void *pmemdest, int c, size_t len){
-    // printf("wrap pmem_memset_persist\n");
-    void *ret = memset(pmemdest, c, len);
-    pmem_persist(pmemdest, len);
-    return ret;
-}
+// void *pmem_memset_persist(void *pmemdest, int c, size_t len){
+//     // printf("wrap pmem_memset_persist\n");
+//     void *ret = memset(pmemdest, c, len);
+//     pmem_persist(pmemdest, len);
+//     return ret;
+// }
 
-void *pmem_memmove_nodrain(void *pmemdest, const void *src, size_t len){
-    // printf("wrap pmem_memmove_nodrain\n");
-    void *ret = memmove(pmemdest, src, len);
-    pmem_flush(pmemdest, len);
-    return ret;
-}
+// void *pmem_memmove_nodrain(void *pmemdest, const void *src, size_t len){
+//     // printf("wrap pmem_memmove_nodrain\n");
+//     void *ret = memmove(pmemdest, src, len);
+//     pmem_flush(pmemdest, len);
+//     return ret;
+// }
 
-void *pmem_memcpy_nodrain(void *pmemdest, const void *src, size_t len){
-    // printf("wrap pmem_memcpy_nodrain\n");
-    void *ret = memcpy(pmemdest, src, len);
-    pmem_flush(pmemdest, len);
-    return ret;
-}
+// void *pmem_memcpy_nodrain(void *pmemdest, const void *src, size_t len){
+//     // printf("wrap pmem_memcpy_nodrain\n");
+//     void *ret = memcpy(pmemdest, src, len);
+//     pmem_flush(pmemdest, len);
+//     return ret;
+// }
 
-void *pmem_memset_nodrain(void *pmemdest, int c, size_t len){
-    // printf("wrap pmem_memset_nodrain\n");
-    void *ret = memset(pmemdest, c, len);
-    pmem_flush(pmemdest, len);
-    return ret;
-}
+// void *pmem_memset_nodrain(void *pmemdest, int c, size_t len){
+//     // printf("wrap pmem_memset_nodrain\n");
+//     void *ret = memset(pmemdest, c, len);
+//     pmem_flush(pmemdest, len);
+//     return ret;
+// }
 
 void *pmem_wrap_memmove(void *pmemdest, const void *src, size_t len, unsigned flags, const char *file, int line){
     // printf("wrap pmem_wrap_memmove\n");
-    void *ret;
-    if((flags & (unsigned int)33U) == 0){
-        ret = pmem_wrap_memmove_persist(pmemdest, src, len, file, line);
-    }
-    else{
-        ret = pmem_memmove_nodrain(pmemdest, src, len);
-    }
-    return ret;
+    rand_set_abortflag_plus_persistcount(file, line);
+    return orig_pmem_memmove(pmemdest, src, len, flags);
 }
 
 void *pmem_wrap_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags, const char *file, int line){
     // printf("wrap pmem_wrap_memcpy\n");
-    void *ret;
-    if((flags & (unsigned int)33U) == 0){
-        ret = pmem_wrap_memcpy_persist(pmemdest, src, len, file, line);
-    }
-    else{
-        ret = pmem_memcpy_nodrain(pmemdest, src, len);
-    }
-    return ret;
+    rand_set_abortflag_plus_persistcount(file, line);
+    return orig_pmem_memcpy(pmemdest, src, len, flags);
 }
 
 void *pmem_wrap_memset(void *pmemdest, int c, size_t len, unsigned flags, const char *file, int line){
     // printf("wrap pmem_wrap_memset\n");
-    void *ret;
-    if((flags & (unsigned int)33U) == 0){
-        ret = pmem_wrap_memset_persist(pmemdest, c, len, file, line);
-    }
-    else{
-        ret = pmem_memset_nodrain(pmemdest, c, len);
-    }
-    return ret;
+    rand_set_abortflag_plus_persistcount(file, line);
+    return orig_pmem_memset(pmemdest, c, len, flags);
 }
 
 void *pmem_memmove(void *pmemdest, const void *src, size_t len, unsigned flags){

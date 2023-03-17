@@ -139,4 +139,6 @@ int pmem_deep_drain(const void *addr, size_t len);
 
 void force_abort_drain(const char *file, int line);
 
+void rand_set_abortflag_plus_persistcount(const char *file, int line);
+
 #endif
