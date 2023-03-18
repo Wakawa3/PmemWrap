@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 		pmemobj_persist(pop, D_RW(object1), sizeof(struct myobject));
 		pmemobj_persist(pop, D_RW(object2), sizeof(struct myobject));
 
-		memcpy(D_RW(object2), pop, sizeof(struct myobject));
+		// memcpy(D_RW(object2), pop, sizeof(struct myobject));
 
 		TX_BEGIN(pop){
 			// TX_ADD(object1);

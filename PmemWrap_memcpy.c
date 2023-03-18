@@ -25,7 +25,7 @@ int is_obj = 0;
 void *normal_memcpy(void *p){
     int i = *(int*)p;
     size_t offset = i * size1 / THREADS / 64 * 64;
-    if(is_obj && (offset < 4096)) offset = 4096;
+    if(is_obj && (offset < 4096)) {offset = 4096; printf("is_obj\n");}
     size_t len;
     if(i != THREADS - 1)
         len = (i + 1) * size1 / THREADS / 64 * 64 - offset; 
@@ -154,7 +154,6 @@ int main(int argc, char *argv[]){
         exit(1);
     }
 
-    if(argc == 4 && (strcmp(argv[3], "obj") == 0)) is_obj = 1;
 
     //fprintf(stderr, "multithread\n");
 
@@ -163,6 +162,16 @@ int main(int argc, char *argv[]){
 
     mapped_file1 = mmap(NULL, size1, PROT_WRITE, MAP_SHARED, fd1, 0);
     mapped_file2 = mmap(NULL, size1, PROT_READ, MAP_PRIVATE, fd2, 0);
+
+    is_obj = 1;
+    for(int i = 0; i < 512; i++){
+        if(*(unsigned char*)(mapped_file2 + i) != 0) {
+            printf("is_not_obj\n");
+            is_obj = 0;
+            break;
+        }
+    }
+    //if(argc == 4 && (strcmp(argv[3], "obj") == 0)) is_obj = 1;
 
     pthread_t pt[THREADS];
 

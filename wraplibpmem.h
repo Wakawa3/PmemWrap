@@ -118,10 +118,6 @@ void *pmem_memmove_persist(void *pmemdest, const void *src, size_t len);
 void *pmem_memcpy_persist(void *pmemdest, const void *src, size_t len);
 void *pmem_memset_persist(void *pmemdest, int c, size_t len);
 
-void *pmem_memmove_nodrain(void *pmemdest, const void *src, size_t len);
-void *pmem_memcpy_nodrain(void *pmemdest, const void *src, size_t len);
-void *pmem_memset_nodrain(void *pmemdest, int c, size_t len);
-
 void *pmem_wrap_memmove(void *pmemdest, const void *src, size_t len, unsigned flags, const char *file, int line);
 void *pmem_wrap_memcpy(void *pmemdest, const void *src, size_t len, unsigned flags, const char *file, int line);
 void *pmem_wrap_memset(void *pmemdest, int c, size_t len, unsigned flags, const char *file, int line);
