@@ -443,9 +443,9 @@ void add_PMEMaddrset(void *orig_addr, size_t len, const char *path, int file_typ
     addrset->prev = tail;
     addrset->len = len;
     addrset->file_type = file_type;
-    unsigned char vector[4];
-    printf("mincore: %d, pagesize: %ld\n", mincore(addrset->orig_addr, sysconf(_SC_PAGESIZE) * 4, vector), sysconf(_SC_PAGESIZE));
-    printf("vector: %d %d %d %d\n", vector[0],vector[1],vector[2],vector[3]);
+    // unsigned char vector[4];
+    // printf("mincore: %d, pagesize: %ld\n", mincore(addrset->orig_addr, sysconf(_SC_PAGESIZE) * 4, vector), sysconf(_SC_PAGESIZE));
+    // printf("vector: %d %d %d %d\n", vector[0],vector[1],vector[2],vector[3]);
     if(memcpyflag != NO_MEMCPY)
         if(file_type == PMEM_FILE){
             memcpy(addrset->fake_addr, addrset->orig_addr, len);
