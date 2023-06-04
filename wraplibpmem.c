@@ -1,7 +1,5 @@
 #include "wraplibpmem.h"
 
-#include <pthread.h>
-
 #define ABORTFLAG_COEFFICIENT 10
 #define ABORTFLAG_COEFFICIENT2 100
 
@@ -151,7 +149,7 @@ static void constructor () {
     }
 }
 
-void plus_persistcount(const char *file, int line){
+Backtraces_info *plus_persistcount(const char *file, int line, char *bt){
     pthread_mutex_lock(&mutex);
 
     int matched = 0;
@@ -169,7 +167,7 @@ void plus_persistcount(const char *file, int line){
         exit(1);
     }
 
-    if(matched == 0){
+    if(matched == 0){// ファイル名がマッチしなかったとき
         file_list[file_id] = (char *)malloc(strlen(file) + 1);
         if(file_list[file_id] == NULL){
             perror(__func__);
@@ -182,92 +180,148 @@ void plus_persistcount(const char *file, int line){
         persist_line_list[file_id][0].count = 1;
         persist_line_list[file_id][0].prev_count = 0;
         persist_line_list[file_id][0].abort_count = 0;
+
+        persist_line_list[file_id][0].binfo = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+        persist_line_list[file_id][0].binfo->count = 1;
+        persist_line_list[file_id][0].binfo->prev_count = 0;
+        persist_line_list[file_id][0].binfo->abort_count = 0;
+        persist_line_list[file_id][0].binfo->next = NULL;
+        strcpy(persist_line_list[file_id][0].binfo->backtrace, bt);
+
         pthread_mutex_unlock(&mutex);
-        return;
+        return persist_line_list[file_id][0].binfo;
     }
 
+    Backtraces_info *binfo_now = NULL;
+
     for(int i=0; i<MAX_LINE_LENGTH; i++){
-        if((line == persist_line_list[file_id][i].line) 
-                || (persist_line_list[file_id][i].line == 0)){
+        if((line == persist_line_list[file_id][i].line) //　すでにlineがあるとき
+                || (persist_line_list[file_id][i].line == 0)){ // lineがないとき(初期値が0)
             persist_line_list[file_id][i].line = line;
             persist_line_list[file_id][i].count++;
+
+            if(persist_line_list[file_id][i].binfo == NULL){
+                persist_line_list[file_id][i].binfo = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+                persist_line_list[file_id][i].binfo->count = 1;
+                persist_line_list[file_id][i].binfo->prev_count = 0;
+                persist_line_list[file_id][i].binfo->abort_count = 0;
+                persist_line_list[file_id][i].binfo->next = NULL;
+                                
+                strcpy(persist_line_list[file_id][i].binfo->backtrace, bt);
+
+                binfo_now = persist_line_list[file_id][i].binfo;
+            }
+            else{
+                binfo_now = persist_line_list[file_id][i].binfo;
+                while(strcmp(bt, binfo_now->backtrace) != 0){
+                    if(binfo_now->next == NULL){
+                        binfo_now->next = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+                        binfo_now = binfo_now->next;
+                        strcpy(binfo_now->backtrace, bt);
+                        binfo_now->count = 0;
+                        binfo_now->prev_count = 0;
+                        binfo_now->abort_count = 0;
+                        binfo_now->next = NULL;
+                        break;
+                    }
+                    binfo_now = binfo_now->next;
+                }
+                binfo_now->count++;
+            }
             break;
         }
     }
 
     pthread_mutex_unlock(&mutex);
+
+    if(binfo_now == NULL){
+        perror(__func__);
+        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
+    return binfo_now;
 }
 
 void read_persistcountfile(){
-    // printf("read_persistcountfile\n");
-    int fd = open("countfile.txt", O_RDONLY);
+    int fd = open("countfile_plus.txt", O_RDONLY);
     if(fd == -1){
         printf("countfile.txt doesn't exist.\n");
-        // perror(__func__);
-        // fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
-        // exit(1);
         return;
     }
-
-    if(lseek(fd, 0, SEEK_END) == 0){
+    
+    long file_size = lseek(fd, 0, SEEK_END);
+    if(file_size == 0){
             return;
     }
     lseek(fd, 0, SEEK_SET);
-    
-    int file_id;
-    int file_name_len;
-    char *tmp = (char *)malloc(MAX_FILE_LENGTH + 1);
+
+    char *tmp = (char *)malloc(file_size + 1);
     if(tmp == NULL){
         perror(__func__);
         fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
         exit(1);
     }
 
-    int r, offset;
+    read(fd, tmp, file_size);
+    char *now_reading = tmp;
 
     for(int i=0;;i++){
-        offset = lseek(fd, 0, SEEK_CUR);
-        //printf("%d offset: %d\n", __LINE__, offset);
-        pread(fd, tmp, MAX_FILE_LENGTH, offset);
-        char *new_line_ptr = strchr(tmp, '\n');
-        tmp[new_line_ptr - tmp] = '\0'; //get file name
-        offset = lseek(fd, new_line_ptr - tmp + 1, SEEK_CUR);
-        //printf("%d tmp: %s\n", __LINE__, tmp);
+        char *fstart = now_reading + 1;
+        char *fend = strchr(now_reading, '\n');
+        *fend = '\0';
 
-        file_list[i] = malloc(strlen(tmp + 1) + 1);//skip '_'
+        file_list[i] = (char*)malloc(fend - fstart + 2);
         if(file_list[i] == NULL){
             perror(__func__);
             fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
             exit(1);
         }
+        strcpy(file_list[i], fstart);
 
-        strcpy(file_list[i], tmp + 1);
-        // printf("%d file_list[%d]: %s\n", __LINE__, i, file_list[i]);
-
+        now_reading = fend + 1;
         for (int j=0;;j++){
-            r = pread(fd, tmp, 32, offset); // int digit + _ + int digit + _ + int digit
-            if((r == 0) || (tmp[0] == '_')){
+            if((now_reading >= tmp + file_size) || (now_reading[0] == '_')){
                 break;
             }
-            tmp[32] = '\0';
-            // printf("%d tmp: %s, r: %d\n", __LINE__, tmp, r);
-            offset = lseek(fd, 33, SEEK_CUR);
 
-            tmp[10] = '\0';
+            now_reading[10] = '\0';
+            now_reading[21] = '\0';
+            now_reading[32] = '\0';
 
-            tmp[21] = '\0';
-
-            persist_line_list[i][j].line = atoi(tmp);
+            persist_line_list[i][j].line = atoi(now_reading);
             persist_line_list[i][j].count = 0;
-            persist_line_list[i][j].prev_count = atoi(tmp + 11);
-            persist_line_list[i][j].abort_count = atoi(tmp + 22);
+            persist_line_list[i][j].prev_count = atoi(now_reading + 11);
+            persist_line_list[i][j].abort_count = atoi(now_reading + 22);
             persist_count_sum += persist_line_list[i][j].prev_count;
-            abort_count_sum += persist_line_list[i][j].abort_count;
             if(persist_line_list[i][j].prev_count != 0) persist_place_sum++;
-            // printf("%d persist_line_list[%d][%d] line: %d, count: %d, prev_count: %d\n", __LINE__, i, j, persist_line_list[i][j].line, persist_line_list[i][j].count, persist_line_list[i][j].prev_count);
+
+            now_reading = now_reading + 33;
+
+            persist_line_list[i][j].binfo = NULL;
+            Backtraces_info **binfo_now = &(persist_line_list[i][j].binfo);
+            while((now_reading < tmp + file_size) && (now_reading[0] == '+')){
+                *binfo_now = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+                now_reading += 7;
+                now_reading[10] = '\0';
+                now_reading[21] = '\0';
+
+                (*binfo_now)->count = 0;
+                (*binfo_now)->prev_count = atoi(now_reading);
+                (*binfo_now)->abort_count = atoi(now_reading + 11);
+                (*binfo_now)->next = NULL;
+                abort_count_sum += (*binfo_now)->abort_count;
+                now_reading += 22;
+
+                char *bend = strchr(now_reading, ';');
+                *bend = '\0';
+                strcpy((*binfo_now)->backtrace, now_reading);
+                binfo_now = &((*binfo_now)->next);
+                now_reading = bend + 2;
+            }
         }
         
-        if(r == 0)  break;
+        if(now_reading >= tmp + file_size)  break;
     }
 
     free(tmp);
@@ -288,6 +342,13 @@ void write_persistcountfile(){
         exit(1);
     }
 
+    int fd2 = open("countfile_plus.txt", O_WRONLY | O_TRUNC | O_CREAT, 0666);
+        if(fd2 == -1){
+        perror(__func__);
+        fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+
     int file_id;
     int file_name_len;
     char *tmp;
@@ -301,18 +362,29 @@ void write_persistcountfile(){
         }
 
         sprintf(tmp, "_%s\n", file_list[file_id]);
-        if(write(fd, tmp, file_name_len + 2) != file_name_len + 2){
+        if(write(fd, tmp, strlen(tmp)) != strlen(tmp)){
+            fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+        if(write(fd2, tmp, strlen(tmp)) != strlen(tmp)){
             fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
             exit(1);
         }
         free(tmp);
 
+        tmp = (char *)malloc(45); //int digit(10) + _ + int digit(10) + _ + int digit(10) + _ + int digit(10) + \n + \0
+        if(tmp == NULL){
+            perror(__func__);
+            fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+
         for(int i=0;(i<MAX_LINE_LENGTH) && (persist_line_list[file_id][i].line != 0); i++){
-            tmp = (char *)malloc(34); //int digit(10) + _ + int digit(10) + _ + int digit(10) + \n + \0
-            if(tmp == NULL){
-                perror(__func__);
-                fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
-                exit(1);
+            persist_line_list[file_id][i].abort_count = 0;
+            Backtraces_info *binfo_now = persist_line_list[file_id][i].binfo;
+            while(binfo_now != NULL){
+                persist_line_list[file_id][i].abort_count += binfo_now->abort_count;
+                binfo_now = binfo_now->next;
             }
 
             if(env != NULL && strcmp(env, "ADD") == 0){
@@ -326,19 +398,45 @@ void write_persistcountfile(){
             else{
                 sprintf(tmp, "%010d_%010d_%010d\n", persist_line_list[file_id][i].line, persist_line_list[file_id][i].count, 0);
             }
-            if(write(fd, tmp, 33) != 33){
+
+            if(write(fd, tmp, strlen(tmp)) != strlen(tmp)){
                 fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
                 exit(1);
             }
-            free(tmp);
+            if(write(fd2, tmp, strlen(tmp)) != strlen(tmp)){
+                fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+                exit(1);
+            }
+            
+            binfo_now = persist_line_list[file_id][i].binfo;
+            while(binfo_now != NULL){
+                if(env != NULL && strcmp(env, "ADD") == 0){
+                    int larger_count;
+                    if(binfo_now->count > binfo_now->prev_count)
+                        larger_count = binfo_now->count;
+                    else
+                        larger_count = binfo_now->prev_count;
+                    sprintf(tmp, "+stack_%010d_%010d\n", larger_count, binfo_now->abort_count);
+                }
+                else{
+                    sprintf(tmp, "+stack_%010d_%010d\n", binfo_now->count, 0);
+                }
+   
+
+                write(fd2, tmp, strlen(tmp));
+                write(fd2, binfo_now->backtrace, strlen(binfo_now->backtrace));
+                write(fd2, ";\n", 2);
+                binfo_now = binfo_now->next;
+            }
         }
+        free(tmp);
         //printf("write_persistcountfile file_id: %d\n", file_id);
     }
 
     close(fd);
 }
 
-void rand_set_abortflag(const char *file, int line){
+void rand_set_abortflag(const char *file, int line, Backtraces_info *binfo){
     //printf("wrap rand_set_abortflag\n");
     if(pmemwrap_abort == 0){
         //fprintf(stderr, "DEBUG file: %s, line: %d\n", file, line);
@@ -356,53 +454,79 @@ void rand_set_abortflag(const char *file, int line){
     rand_set_count++;
     int file_id;
 
-    char *tmp;
-    for(file_id=0; file_id<MAX_FILE_LENGTH && file_list[file_id] != NULL; file_id++){
-        if(strcmp(file, file_list[file_id]) != 0){
-            continue;
-        }
-        for(int i=0;(i<MAX_LINE_LENGTH) && (persist_line_list[file_id][i].line != 0); i++){
-            if(persist_line_list[file_id][i].line == line){
-                if(persist_line_list[file_id][i].prev_count == 0){
-                    abortflag = 0;
-                    pthread_mutex_unlock(&mutex);
-                    return;
-                }
-                //ランダムにabortflagをセット
-                int rand_num = rand();
-                double probability = (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
-                if (abort_count_sum != 0){
-                    for(int j=0; j<persist_line_list[file_id][i].abort_count - abort_count_minus; j++)
-                        probability *= 1 / (double)ABORTFLAG_COEFFICIENT2;
-                }
-                    
-                //fprintf(stderr, "1, %f 2, %f 3, %f\n", probability, (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum), (double)persist_line_list[file_id][i].abort_count / (double)abort_count_sum);
-                double rand_number = (double)rand_num / RAND_MAX;
-                // printf("probability: %lf, rand_number%lf\n", probability, rand_number);
-                if(rand_number < probability){
-                    //正しい挙動
-                    fprintf(stderr, "set abortflag file: %s, line: %d, rand_set_count: %d\n", file, line, rand_set_count);
-                    //
-                    persist_line_list[file_id][i].abort_count++;
-                    abortflag = 1;
-                    pthread_mutex_unlock(&mutex);
-                    return;
-                }
-                else{
-                    abortflag = 0;
-                        //printf("end rand_set_abortflag\n");
-                    pthread_mutex_unlock(&mutex);
-                    return;
-                }
-            }
-        }
+    if(binfo->count == 0){
+        abortflag = 0;
+        pthread_mutex_unlock(&mutex);
+        return;
     }
 
-    abortflag = 0;
-    //printf("end rand_set_abortflag\n");
+    int rand_num = rand();
+    double probability = (double)ABORTFLAG_COEFFICIENT * 1 / ((double)binfo->prev_count * (double)persist_place_sum);
+    if (abort_count_sum != 0){
+        for(int j=0; j < binfo->abort_count - abort_count_minus; j++)
+            probability *= 1 / (double)ABORTFLAG_COEFFICIENT2;
+    }
+
+    double rand_number = (double)rand_num / RAND_MAX;
+    if(rand_number < probability){
+        //正しい挙動
+        fprintf(stderr, "set abortflag file: %s, line: %d, rand_set_count: %d\n", file, line, rand_set_count);
+        //
+        binfo->abort_count++;
+        abortflag = 1;
+    }
+    else{
+        abortflag = 0;
+    }
 
     pthread_mutex_unlock(&mutex);
     return;
+
+    // for(file_id=0; file_id<MAX_FILE_LENGTH && file_list[file_id] != NULL; file_id++){
+    //     if(strcmp(file, file_list[file_id]) != 0){
+    //         continue;
+    //     }
+    //     for(int i=0;(i<MAX_LINE_LENGTH) && (persist_line_list[file_id][i].line != 0); i++){
+    //         if(persist_line_list[file_id][i].line == line){
+    //             if(persist_line_list[file_id][i].prev_count == 0){
+    //                 abortflag = 0;
+    //                 pthread_mutex_unlock(&mutex);
+    //                 return;
+    //             }
+    //             //ランダムにabortflagをセット
+    //             int rand_num = rand();
+    //             double probability = (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum);
+    //             if (abort_count_sum != 0){
+    //                 for(int j=0; j<persist_line_list[file_id][i].abort_count - abort_count_minus; j++)
+    //                     probability *= 1 / (double)ABORTFLAG_COEFFICIENT2;
+    //             }
+                    
+    //             //fprintf(stderr, "1, %f 2, %f 3, %f\n", probability, (double)ABORTFLAG_COEFFICIENT * 1 / ((double)persist_line_list[file_id][i].prev_count * (double)persist_place_sum), (double)persist_line_list[file_id][i].abort_count / (double)abort_count_sum);
+    //             double rand_number = (double)rand_num / RAND_MAX;
+    //             // printf("probability: %lf, rand_number%lf\n", probability, rand_number);
+    //             if(rand_number < probability){
+    //                 //正しい挙動
+    //                 fprintf(stderr, "set abortflag file: %s, line: %d, rand_set_count: %d\n", file, line, rand_set_count);
+    //                 //
+    //                 persist_line_list[file_id][i].abort_count++;
+    //                 abortflag = 1;
+    //                 pthread_mutex_unlock(&mutex);
+    //                 return;
+    //             }
+    //             else{
+    //                 abortflag = 0;
+    //                     //printf("end rand_set_abortflag\n");
+    //                 pthread_mutex_unlock(&mutex);
+    //                 return;
+    //             }
+    //         }
+    //     }
+    // }
+
+    // abortflag = 0;
+
+    // pthread_mutex_unlock(&mutex);
+    // return;
 }
 
 void add_PMEMaddrset(void *orig_addr, size_t len, const char *path, int file_type){
@@ -494,8 +618,7 @@ void pmem_persist(const void *addr, size_t len){
 
 int pmem_wrap_msync(const void *addr, size_t len, const char *file, int line){
     pmem_flush(addr, len);
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     pmem_drain();
     return orig_pmem_msync(addr, len);
 }
@@ -539,8 +662,7 @@ void delete_PMEMaddrset(void *addr){
 }
 
 int pmem_wrap_unmap(void *addr, size_t len, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     if(abortflag == 1){
         pmem_drain();
     }
@@ -689,8 +811,7 @@ void pmem_flush(const void *addr, size_t len){
 
 void pmem_wrap_drain(const char *file, int line){
     // printf("wrap pmem_wrap_drain\n");
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
 
     pmem_drain();
     
@@ -699,6 +820,11 @@ void pmem_wrap_drain(const char *file, int line){
 
 void pmem_drain(){//waitdrainに入れたものだけをdrain
     //printf("wrap pmem_drain\n");
+    // void *trace[64];
+    // int n = backtrace(trace, sizeof(trace) / sizeof(trace[0]));
+    // backtrace_symbols_fd(trace, n, 1);
+
+
     pthread_mutex_lock(&mutex);
 
     Waitdrain_addrset *w_set = w_head;
@@ -811,14 +937,84 @@ void pmem_drain_nowrap(){
 }
 
 void rand_set_abortflag_plus_persistcount(const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    char bt[8000];
+    void *trace[64];
+    int n = backtrace(trace, sizeof(trace) / sizeof(trace[0]));
+    backtrace_file_offset(trace, n, bt, 0);
+
+    Backtraces_info *binfo = plus_persistcount(file, line, bt);
+    rand_set_abortflag(file, line, binfo);
+
+    if(abortflag == 1){
+        int b_fd = open("backtrace.txt", O_WRONLY | O_TRUNC | O_CREAT, 0666);
+        if(b_fd == -1){
+            perror(__func__);
+            fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
+            exit(1);
+        }
+
+        char buf[8020];
+        backtrace_file_offset(trace, n, buf, 0);
+        sprintf(buf, "+stack\n%s;\n", bt);
+        write(b_fd, buf, strlen(buf));
+
+        close(b_fd);
+    }
 }
 
 void debug_print_line(const char *file, int line){
     fprintf(stderr, "debug_print_line, file: %s, line: %d\n", file, line);
 }
 
-// void pmemwrap_copy(){
-//     memcpy(head->fake_addr, head->orig_addr, head->len);
-// }
+void backtrace_file_offset_fd(void *const *array, int size, int fd)
+{
+    Dl_info info[128];
+    int status[128];
+    size_t total = 0;
+    char *buf = (char *)malloc(8192);
+    
+    /* Fill in the information we can get from `dladdr'.  */
+    for (int i = 0; i < size; ++i)
+    {
+        status[i] = dladdr(array[i], &info[i]);
+        if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
+        {
+            size_t offset = array[i] - info[i].dli_fbase;
+            sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, offset);
+            write(fd, buf, strlen(buf));
+        }
+        else{
+            sprintf(buf, "backtrace_error\n");
+            write(fd, buf, strlen(buf));
+        }
+    }
+
+    free(buf);
+}
+
+void backtrace_file_offset(void *const *array, int size, char* buf, int start_trace)
+{
+    Dl_info info[128];
+    int status[128];
+    size_t total = 0;
+    
+    buf[0] = '\0';
+    /* Fill in the information we can get from `dladdr'.  */
+    for (int i = start_trace; i < size; ++i)
+    {
+        status[i] = dladdr(array[i], &info[i]);
+        if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
+        {
+            size_t offset = array[i] - info[i].dli_fbase;
+            if(strstr(buf, "libwrappmem.so") == NULL){
+                sprintf(buf, "%s%s_++0x%lx\n", buf, info[i].dli_fname, offset);
+            }
+            else{
+                sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, offset);
+            }
+        }
+        else{
+            sprintf(buf, "%sbacktrace_error\n", buf);
+        }
+    }
+}

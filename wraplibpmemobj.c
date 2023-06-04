@@ -132,24 +132,21 @@ PMEMobjpool *pmemobj_open(const char *path, const char *layout){
 
 void pmemobj_wrap_persist(PMEMobjpool *pop, const void *addr, size_t len, const char *file, int line){
     // printf("****wrap pmemobj_persist****\n");
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     orig_pmemobj_persist(pop, addr, len);
     // printf("****end pmemobj_persist****\n");
 }
 
 void pmemobj_wrap_drain(PMEMobjpool *pop, const char *file, int line){
     // printf("****wrap pmemobj_drain****\n");
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     orig_pmemobj_drain(pop);
     // printf("****end pmemobj_drain****\n");
 }
 
 int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, const char *file, int line){
     // printf("****wrap pmemobj_wrap_tx_add_range****\n");
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     int ret = orig_pmemobj_tx_add_range(oid, hoff, size);
     // printf("****end pmemobj_wrap_tx_add_range****\n");
     return ret;
@@ -157,8 +154,7 @@ int pmemobj_wrap_tx_add_range(PMEMoid oid, uint64_t hoff, size_t size, const cha
 
 int pmemobj_wrap_tx_add_range_direct(const void *ptr, size_t size, const char *file, int line){
     //printf("add_range_direct start\n");
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     //if(abortflag == 1) pmem_drain();
     
     //printf("add_range_direct end\n");
@@ -167,8 +163,7 @@ int pmemobj_wrap_tx_add_range_direct(const void *ptr, size_t size, const char *f
 
 
 void pmemobj_wrap_close(PMEMobjpool *pop, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     if(abortflag == 1){
         pmem_drain();
     }
@@ -191,20 +186,16 @@ void pmemobj_wrap_tx_process(const char *file, int line){
     //printf("****wrap pmemobj_wrap_tx_process**** file: %s, line: %d\n", file, line);
 
     if((tx_process_file == NULL) || (strcmp(tx_process_file, file) != 0) || (tx_process_line != line)){
-        plus_persistcount(file, line);
+        rand_set_abortflag_plus_persistcount(file, line);
         c_flag = 0;
-        rand_set_abortflag(file, line);
     }
     else if(c_flag <= 1){
         c_flag++;
     }
     else{
-        plus_persistcount(file, line);
+        rand_set_abortflag_plus_persistcount(file, line);
         c_flag = 0;
-        rand_set_abortflag(file, line);
     }
-
-    // plus_persistcount(file, line);
 
     tx_process_file = file;
     tx_process_line = line;
@@ -234,39 +225,33 @@ void *pmemobj_wrap_memset_persist(PMEMobjpool *pop, void *dest, int c, size_t le
 }
 
 int pmemobj_wrap_alloc(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t type_num, pmemobj_constr constructor, void *arg, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     return orig_pmemobj_alloc(pop, oidp, size, type_num, constructor, arg);
 }
 
 int pmemobj_wrap_zalloc(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t type_num, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     return orig_pmemobj_zalloc(pop, oidp, size, type_num);
 }
 
 int pmemobj_wrap_realloc(PMEMobjpool *pop, PMEMoid *oidp, size_t size, uint64_t type_num, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     return orig_pmemobj_realloc(pop, oidp, size, type_num);
 }
 
 void *pmemobj_wrap_direct(PMEMoid oid, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     if(abortflag == 1) pmem_drain();
     
     return orig_pmemobj_direct(oid);
 }
 
 PMEMoid pmemobj_wrap_tx_alloc(size_t size, uint64_t type_num, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     return orig_pmemobj_tx_alloc(size, type_num);
 }
 
 PMEMoid pmemobj_wrap_tx_zalloc(size_t size, uint64_t type_num, const char *file, int line){
-    plus_persistcount(file, line);
-    rand_set_abortflag(file, line);
+    rand_set_abortflag_plus_persistcount(file, line);
     return orig_pmemobj_tx_zalloc(size, type_num);
 }

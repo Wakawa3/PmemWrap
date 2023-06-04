@@ -194,3 +194,5 @@ if __name__ == "__main__":
             for line in trace:
                 print(line)
             print("")
+
+    f.close()

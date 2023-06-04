@@ -13,6 +13,8 @@
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <execinfo.h>
 
 #define MAX_PATH_LENGTH 256
 #define CACHE_LINE_SIZE 64
@@ -63,14 +65,23 @@ extern Waitdrain_addrset *w_tail;
 
 //int flushed = 0;
 
-typedef struct _line_info LINEinfo;
+struct _backtraces_info{
+    char backtrace[8000];
+    int count;
+    int prev_count;
+    int abort_count;
+    struct _backtraces_info *next;
+};
+typedef struct _backtraces_info Backtraces_info;
 
 struct _line_info{
     int line;
     int count;
     int prev_count;
     int abort_count;
+    Backtraces_info *binfo;
 };
+typedef struct _line_info LINEinfo;
 
 extern char *file_list[MAX_FILE_LENGTH];
 //LINEinfo *(persist_line_list[MAX_LINE_LENGTH])[MAX_FILE_LENGTH]; //ポインタ配列 ポインタはpersist_line_list[MAX_LINE_LENGTH]のアドレスを指す
@@ -89,11 +100,11 @@ extern int (*orig_pmem_deep_drain)(const void *, size_t);
 extern int abortflag;
 extern int memcpyflag;
 
-void plus_persistcount(const char *file, int line);
+Backtraces_info *plus_persistcount(const char *file, int line, char *bt);
 void read_persistcountfile();
 void write_persistcountfile();
 // void reset_persistcount();
-void rand_set_abortflag(const char *file, int line);
+void rand_set_abortflag(const char *file, int line, Backtraces_info *binfo);
 
 void add_PMEMaddrset(void *orig_addr, size_t len, const char *path, int file_type);
 
@@ -110,6 +121,9 @@ void rollback_memcpy(PMEMaddrset *set);
 // void rand_file_generate(PMEMaddrset *set, size_t n, uintptr_t d);//現在不使用
 
 void add_waitdrainlist(const void *addr, size_t len);
+
+void backtrace_file_offset_fd(void *const *array, int size, int fd);
+void backtrace_file_offset(void *const *array, int size, char *buf, int start_trace);
 
 void *pmem_wrap_memmove_persist(void *pmemdest, const void *src, size_t len, const char *file, int line);
 void *pmem_wrap_memcpy_persist(void *pmemdest, const void *src, size_t len, const char *file, int line);

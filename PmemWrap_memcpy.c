@@ -71,7 +71,7 @@ void *rand_memcpy(void *p){
         }
         else{
             if(series_flag == 1){
-                printf("diff range: %lx - %lx\n", from_offset, offset);
+                // printf("diff range: %lx - %lx\n", from_offset, offset);
                 series_flag = 0;
             }
         }
