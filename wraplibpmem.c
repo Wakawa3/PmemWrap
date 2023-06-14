@@ -9,8 +9,11 @@ PMEMaddrset *tail = NULL;
 Waitdrain_addrset *w_head = NULL;
 Waitdrain_addrset *w_tail = NULL;
 
-char *file_list[MAX_FILE_LENGTH];
-LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
+// char *file_list[MAX_FILE_LENGTH];
+
+Backtrace_tree_node *bt_root;
+
+// LINEinfo persist_line_list[MAX_FILE_LENGTH][MAX_LINE_LENGTH];
 
 int persist_count_sum = 0;
 int persist_place_sum = 0;
@@ -147,101 +150,189 @@ static void constructor () {
         fprintf(stderr, "orig_pmem_memset: %p\n%s\n", orig_pmem_memset, dlerror());
         exit(1);
     }
+
+    bt_root = (Backtrace_tree_node *)malloc(sizeof(Backtrace_tree_node));
+    bt_root->path = NULL;
 }
 
-Backtraces_info *plus_persistcount(const char *file, int line, char *bt){
+Backtrace_tree_node *plus_persistcount(){
     pthread_mutex_lock(&mutex);
 
     int matched = 0;
-    int file_id;
-    //ファイル名がマッチしたらそのときのid,マッチしないときは最後のid+1
-    for(file_id=0; (file_id<MAX_FILE_LENGTH) && (file_list[file_id] != NULL); file_id++){
-        if(strcmp(file_list[file_id], file) == 0){
-            matched = 1;
-            break;
+
+    Backtrace_tree_node *bt_node_now = bt_root;
+    Backtrace_tree_node *bt_node_target = bt_root->child;
+
+    void *trace[64];
+    int trace_size = backtrace(trace, sizeof(trace) / sizeof(trace[0]));
+//
+    Dl_info info[128];
+    int status[128];
+
+    int trace_start = 0;
+
+    for (int i=0; i < trace_size; ++i)
+    {
+        status[i] = dladdr(trace[i], &info[i]);
+        if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
+        {
+            if((strstr(info[i].dli_fname, "libwrappmem.so") == NULL) // libpmem系がbufに書かれたら最初から書き直す
+                && (strstr(info[i].dli_fname, "libwrappmemobj.so") == NULL)
+                && (strstr(info[i].dli_fname, "libpmem.so") == NULL)
+                && (strstr(info[i].dli_fname, "libpmemobj.so") == NULL))
+            {
+                trace_start = i + 1;
+            }
         }
-    }
-
-    if(file_id == MAX_FILE_LENGTH){
-        fprintf(stderr, "plus_persistcount error, %s, %d\n", __FILE__, __LINE__);
-        exit(1);
-    }
-
-    if(matched == 0){// ファイル名がマッチしなかったとき
-        file_list[file_id] = (char *)malloc(strlen(file) + 1);
-        if(file_list[file_id] == NULL){
+        else{
             perror(__func__);
             fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
             exit(1);
         }
-
-        strcpy(file_list[file_id], file);
-        persist_line_list[file_id][0].line = line;
-        persist_line_list[file_id][0].count = 1;
-        persist_line_list[file_id][0].prev_count = 0;
-        persist_line_list[file_id][0].abort_count = 0;
-
-        persist_line_list[file_id][0].binfo = (Backtraces_info *)malloc(sizeof(Backtraces_info));
-        persist_line_list[file_id][0].binfo->count = 1;
-        persist_line_list[file_id][0].binfo->prev_count = 0;
-        persist_line_list[file_id][0].binfo->abort_count = 0;
-        persist_line_list[file_id][0].binfo->next = NULL;
-        strcpy(persist_line_list[file_id][0].binfo->backtrace, bt);
-
-        pthread_mutex_unlock(&mutex);
-        return persist_line_list[file_id][0].binfo;
     }
 
-    Backtraces_info *binfo_now = NULL;
-
-    for(int i=0; i<MAX_LINE_LENGTH; i++){
-        if((line == persist_line_list[file_id][i].line) //　すでにlineがあるとき
-                || (persist_line_list[file_id][i].line == 0)){ // lineがないとき(初期値が0)
-            persist_line_list[file_id][i].line = line;
-            persist_line_list[file_id][i].count++;
-
-            if(persist_line_list[file_id][i].binfo == NULL){
-                persist_line_list[file_id][i].binfo = (Backtraces_info *)malloc(sizeof(Backtraces_info));
-                persist_line_list[file_id][i].binfo->count = 1;
-                persist_line_list[file_id][i].binfo->prev_count = 0;
-                persist_line_list[file_id][i].binfo->abort_count = 0;
-                persist_line_list[file_id][i].binfo->next = NULL;
-                                
-                strcpy(persist_line_list[file_id][i].binfo->backtrace, bt);
-
-                binfo_now = persist_line_list[file_id][i].binfo;
-            }
-            else{
-                binfo_now = persist_line_list[file_id][i].binfo;
-                while(strcmp(bt, binfo_now->backtrace) != 0){
-                    if(binfo_now->next == NULL){
-                        binfo_now->next = (Backtraces_info *)malloc(sizeof(Backtraces_info));
-                        binfo_now = binfo_now->next;
-                        strcpy(binfo_now->backtrace, bt);
-                        binfo_now->count = 0;
-                        binfo_now->prev_count = 0;
-                        binfo_now->abort_count = 0;
-                        binfo_now->next = NULL;
-                        break;
-                    }
-                    binfo_now = binfo_now->next;
+    for (int i = trace_start; i < trace_size; ++i)
+    {
+        size_t off = trace[i] - info[i].dli_fbase;
+        while(1){
+            if(bt_node_now->path == NULL){ //
+                bt_node_now->path = (char *)malloc(strlen(info[i].dli_fname) + 1);
+                strcpy(bt_node_now->path, info[i].dli_fname);
+                bt_node_now->offset = off;
+                bt_node_now->count = 0;
+                bt_node_now->prev_count = 0;
+                bt_node_now->abort_count = 0;
+                bt_node_now->right = NULL;
+                if(i == trace_size - 1){//最後まで到達しているとき
+                    bt_node_now->count = 1;
+                    bt_node_now->child = NULL;
+                    break;
                 }
-                binfo_now->count++;
+                bt_node_now->child = (Backtrace_tree_node *)malloc(sizeof(Backtrace_tree_node));
+                bt_node_now->child->path = NULL;
+
+                bt_node_now = bt_node_now->child;
+                break;
             }
-            break;
+            if((strcmp(bt_node_now->path, trace[i]) == 0) && (bt_node_now->offset == off)){
+                if(i == trace_size - 1){//最後まで到達しているとき
+                    bt_node_now->count++;
+                    break;
+                }
+                
+                if(bt_node_now->child == NULL){
+                    bt_node_now->child = (Backtrace_tree_node *)malloc(sizeof(Backtrace_tree_node));
+                    bt_node_now->child->path = NULL;
+                }
+                bt_node_now = bt_node_now->child;
+                break;
+            }
+            
+            if(bt_node_now->right == NULL){
+                bt_node_now->right = (Backtrace_tree_node *)malloc(sizeof(Backtrace_tree_node));
+                bt_node_now->right->path = NULL;
+            }
+            bt_node_now = bt_node_now->right;
+            continue;
         }
     }
-
     pthread_mutex_unlock(&mutex);
-
-    if(binfo_now == NULL){
-        perror(__func__);
-        fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
-        exit(1);
-    }
-
-    return binfo_now;
+    return bt_node_now;
 }
+
+// Backtraces_info *plus_persistcount(const char *file, int line, char *bt){
+//     pthread_mutex_lock(&mutex);
+
+//     int matched = 0;
+//     int file_id;
+//     //ファイル名がマッチしたらそのときのid,マッチしないときは最後のid+1
+//     for(file_id=0; (file_id<MAX_FILE_LENGTH) && (file_list[file_id] != NULL); file_id++){
+//         if(strcmp(file_list[file_id], file) == 0){
+//             matched = 1;
+//             break;
+//         }
+//     }
+
+//     if(file_id == MAX_FILE_LENGTH){
+//         fprintf(stderr, "plus_persistcount error, %s, %d\n", __FILE__, __LINE__);
+//         exit(1);
+//     }
+
+//     if(matched == 0){// ファイル名がマッチしなかったとき
+//         file_list[file_id] = (char *)malloc(strlen(file) + 1);
+//         if(file_list[file_id] == NULL){
+//             perror(__func__);
+//             fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+//             exit(1);
+//         }
+
+//         strcpy(file_list[file_id], file);
+//         persist_line_list[file_id][0].line = line;
+//         persist_line_list[file_id][0].count = 1;
+//         persist_line_list[file_id][0].prev_count = 0;
+//         persist_line_list[file_id][0].abort_count = 0;
+
+//         persist_line_list[file_id][0].binfo = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+//         persist_line_list[file_id][0].binfo->count = 1;
+//         persist_line_list[file_id][0].binfo->prev_count = 0;
+//         persist_line_list[file_id][0].binfo->abort_count = 0;
+//         persist_line_list[file_id][0].binfo->next = NULL;
+//         strcpy(persist_line_list[file_id][0].binfo->backtrace, bt);
+
+//         pthread_mutex_unlock(&mutex);
+//         return persist_line_list[file_id][0].binfo;
+//     }
+
+//     Backtraces_info *binfo_now = NULL;
+
+//     for(int i=0; i<MAX_LINE_LENGTH; i++){
+//         if((line == persist_line_list[file_id][i].line) //　すでにlineがあるとき
+//                 || (persist_line_list[file_id][i].line == 0)){ // lineがないとき(初期値が0)
+//             persist_line_list[file_id][i].line = line;
+//             persist_line_list[file_id][i].count++;
+
+//             if(persist_line_list[file_id][i].binfo == NULL){
+//                 persist_line_list[file_id][i].binfo = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+//                 persist_line_list[file_id][i].binfo->count = 1;
+//                 persist_line_list[file_id][i].binfo->prev_count = 0;
+//                 persist_line_list[file_id][i].binfo->abort_count = 0;
+//                 persist_line_list[file_id][i].binfo->next = NULL;
+                                
+//                 strcpy(persist_line_list[file_id][i].binfo->backtrace, bt);
+
+//                 binfo_now = persist_line_list[file_id][i].binfo;
+//             }
+//             else{
+//                 binfo_now = persist_line_list[file_id][i].binfo;
+//                 while(strcmp(bt, binfo_now->backtrace) != 0){
+//                     if(binfo_now->next == NULL){
+//                         binfo_now->next = (Backtraces_info *)malloc(sizeof(Backtraces_info));
+//                         binfo_now = binfo_now->next;
+//                         strcpy(binfo_now->backtrace, bt);
+//                         binfo_now->count = 0;
+//                         binfo_now->prev_count = 0;
+//                         binfo_now->abort_count = 0;
+//                         binfo_now->next = NULL;
+//                         break;
+//                     }
+//                     binfo_now = binfo_now->next;
+//                 }
+//                 binfo_now->count++;
+//             }
+//             break;
+//         }
+//     }
+
+//     pthread_mutex_unlock(&mutex);
+
+//     if(binfo_now == NULL){
+//         perror(__func__);
+//         fprintf(stderr, "error, %s, %d, %s\n", __FILE__, __LINE__, __func__);
+//         exit(1);
+//     }
+
+//     return binfo_now;
+// }
 
 void read_persistcountfile(){
     int fd = open("countfile_plus.txt", O_RDONLY);
@@ -936,63 +1027,100 @@ void pmem_drain_nowrap(){
     pmem_drain();
 }
 
-void rand_set_abortflag_plus_persistcount(const char *file, int line){
-    char bt[8000];
-    void *trace[64];
-    int n = backtrace(trace, sizeof(trace) / sizeof(trace[0]));
-    backtrace_file_offset(trace, n, bt, 0);
+// void rand_set_abortflag_plus_persistcount(const char *file, int line){
+//     char bt[8000];
+//     void *trace[64];
+//     int n = backtrace(trace, sizeof(trace) / sizeof(trace[0]));
+//     backtrace_file_offset(trace, n, bt, 0);
 
-    Backtraces_info *binfo = plus_persistcount(file, line, bt);
-    rand_set_abortflag(file, line, binfo);
+//     Backtraces_info *binfo = plus_persistcount(file, line, bt);
+//     rand_set_abortflag(file, line, binfo);
 
-    if(abortflag == 1){
-        int b_fd = open("backtrace.txt", O_WRONLY | O_TRUNC | O_CREAT, 0666);
-        if(b_fd == -1){
-            perror(__func__);
-            fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
-            exit(1);
-        }
+//     if(abortflag == 1){
+//         int b_fd = open("backtrace.txt", O_WRONLY | O_TRUNC | O_CREAT, 0666);
+//         if(b_fd == -1){
+//             perror(__func__);
+//             fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
+//             exit(1);
+//         }
 
-        char buf[8020];
-        backtrace_file_offset(trace, n, buf, 0);
-        sprintf(buf, "+stack\n%s;\n", bt);
-        write(b_fd, buf, strlen(buf));
+//         char buf[8020];
+//         backtrace_file_offset(trace, n, buf, 0);
+//         sprintf(buf, "+stack\n%s;\n", bt);
+//         write(b_fd, buf, strlen(buf));
 
-        close(b_fd);
-    }
+//         close(b_fd);
+//     }
+// }
+
+void rand_set_abortflag_plus_persistcount(){
+    Backtrace_tree_node node = plus_persistcount();
+    rand_set_abortflag(node);
 }
+
 
 void debug_print_line(const char *file, int line){
     fprintf(stderr, "debug_print_line, file: %s, line: %d\n", file, line);
 }
 
-void backtrace_file_offset_fd(void *const *array, int size, int fd)
-{
-    Dl_info info[128];
-    int status[128];
-    size_t total = 0;
-    char *buf = (char *)malloc(8192);
+// void backtrace_file_offset_fd(void *const *array, int size, int fd)
+// {
+//     Dl_info info[128];
+//     int status[128];
+//     size_t total = 0;
+//     char *buf = (char *)malloc(8192);
     
-    /* Fill in the information we can get from `dladdr'.  */
-    for (int i = 0; i < size; ++i)
-    {
-        status[i] = dladdr(array[i], &info[i]);
-        if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
-        {
-            size_t offset = array[i] - info[i].dli_fbase;
-            sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, offset);
-            write(fd, buf, strlen(buf));
-        }
-        else{
-            sprintf(buf, "backtrace_error\n");
-            write(fd, buf, strlen(buf));
-        }
-    }
+//     /* Fill in the information we can get from `dladdr'.  */
+//     for (int i = 0; i < size; ++i)
+//     {
+//         status[i] = dladdr(array[i], &info[i]);
+//         if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
+//         {
+//             size_t offset = array[i] - info[i].dli_fbase;
+//             sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, offset);
+//             write(fd, buf, strlen(buf));
+//         }
+//         else{
+//             sprintf(buf, "backtrace_error\n");
+//             write(fd, buf, strlen(buf));
+//         }
+//     }
 
-    free(buf);
-}
+//     free(buf);
+// }
 
-void backtrace_file_offset(void *const *array, int size, char* buf, int start_trace)
+// void backtrace_file_offset(void *const *array, int size, char* buf, int start_trace)
+// {
+//     Dl_info info[128];
+//     int status[128];
+//     size_t total = 0;
+    
+//     buf[0] = '\0';
+//     /* Fill in the information we can get from `dladdr'.  */
+//     for (int i = start_trace; i < size; ++i)
+//     {
+//         status[i] = dladdr(array[i], &info[i]);
+//         if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
+//         {
+//             size_t offset = array[i] - info[i].dli_fbase;
+//             if((strstr(buf, "libwrappmem.so") == NULL) // libpmem系がbufに書かれたら最初から書き直す
+//                 && (strstr(buf, "libwrappmemobj.so") == NULL)
+//                 && (strstr(buf, "libpmem.so") == NULL)
+//                 && (strstr(buf, "libpmemobj.so") == NULL))
+//             {
+//                 sprintf(buf, "%s%s_++0x%lx\n", buf, info[i].dli_fname, offset);
+//             }
+//             else{
+//                 sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, offset);
+//             }
+//         }
+//         else{
+//             sprintf(buf, "%sbacktrace_error\n", buf);
+//         }
+//     }
+// }
+
+void backtrace_file_offset(void *const *array, int size, char* buf, size_t* offset, int start_trace)
 {
     Dl_info info[128];
     int status[128];
@@ -1005,12 +1133,16 @@ void backtrace_file_offset(void *const *array, int size, char* buf, int start_tr
         status[i] = dladdr(array[i], &info[i]);
         if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
         {
-            size_t offset = array[i] - info[i].dli_fbase;
-            if(strstr(buf, "libwrappmem.so") == NULL){
-                sprintf(buf, "%s%s_++0x%lx\n", buf, info[i].dli_fname, offset);
+            size_t off = array[i] - info[i].dli_fbase;
+            if((strstr(buf, "libwrappmem.so") == NULL) // libpmem系がbufに書かれたら最初から書き直す
+                && (strstr(buf, "libwrappmemobj.so") == NULL)
+                && (strstr(buf, "libpmem.so") == NULL)
+                && (strstr(buf, "libpmemobj.so") == NULL))
+            {
+                sprintf(buf, "%s%s_++0x%lx\n", buf, info[i].dli_fname, off);
             }
             else{
-                sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, offset);
+                sprintf(buf, "%s_++0x%lx\n", info[i].dli_fname, off);
             }
         }
         else{

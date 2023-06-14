@@ -74,14 +74,25 @@ struct _backtraces_info{
 };
 typedef struct _backtraces_info Backtraces_info;
 
-struct _line_info{
-    int line;
+struct _backtrace_tree_node{
+    char *path;
+    size_t offset;
     int count;
     int prev_count;
     int abort_count;
-    Backtraces_info *binfo;
+    struct _backtrace_tree_node *right;
+    struct _backtrace_tree_node *child;
 };
-typedef struct _line_info LINEinfo;
+typedef struct _backtrace_tree_node Backtrace_tree_node;
+
+// struct _line_info{
+//     int line;
+//     int count;
+//     int prev_count;
+//     int abort_count;
+//     Backtraces_info *binfo;
+// };
+// typedef struct _line_info LINEinfo;
 
 extern char *file_list[MAX_FILE_LENGTH];
 //LINEinfo *(persist_line_list[MAX_LINE_LENGTH])[MAX_FILE_LENGTH]; //ポインタ配列 ポインタはpersist_line_list[MAX_LINE_LENGTH]のアドレスを指す
