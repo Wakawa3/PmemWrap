@@ -35,6 +35,7 @@ int pmemwrap_abort = 0;
 int abortflag = 0;
 int memcpyflag = NORMAL_MEMCPY;
 int abort_count_minus = 0;
+int abort_through = 0;
 
 int rand_set_count = 0;
 int subseed = 0;
@@ -331,7 +332,7 @@ void write_persistcountfile(){
     char *env = getenv("PMEMWRAP_WRITECOUNTFILE");
     if(env != NULL && strcmp(env, "NO") == 0){
         //fprintf(stderr, "pmemwrap_writecountfile == 0\n");
-        pthread_mutex_unlock(&mutex);
+        // pthread_mutex_unlock(&mutex);
         return;
     }
 
@@ -438,7 +439,7 @@ void write_persistcountfile(){
 
 void rand_set_abortflag(const char *file, int line, Backtraces_info *binfo){
     //printf("wrap rand_set_abortflag\n");
-    if(pmemwrap_abort == 0){
+    if(pmemwrap_abort == 0 || abort_through == 1){
         //fprintf(stderr, "DEBUG file: %s, line: %d\n", file, line);
         return;
     }
@@ -1017,4 +1018,21 @@ void backtrace_file_offset(void *const *array, int size, char* buf, int start_tr
             sprintf(buf, "%sbacktrace_error\n", buf);
         }
     }
+}
+
+void *nopmdk_mmap(const char *path, size_t len){
+    int fd = open(path, O_RDWR);
+    if(fd == -1){
+        perror(__func__);
+        fprintf(stderr, " %s, %d, %s\n", __FILE__, __LINE__, __func__);
+        exit(1);
+    }
+    void *pmem_addr = mmap(NULL, len, (PROT_WRITE | PROT_READ), MAP_SHARED, fd, 0);
+    add_PMEMaddrset(pmem_addr, len, path, PMEM_FILE);
+
+    return pmem_addr;
+}
+
+void set_abort_through(int flag){
+    abort_through = flag;
 }
