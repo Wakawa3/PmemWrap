@@ -4,8 +4,8 @@ import subprocess
 
 if __name__ == "__main__":
     f = open('countfile_plus.txt', 'r')
-    exfile = re.compile(".*_\+\+")
-    pos = re.compile("_\+\+.*")
+    # exfile = re.compile(".*_\+\+")
+    # pos = re.compile("_\+\+.*")
 
     out_f = open('countfile_stack.txt', 'w')
 

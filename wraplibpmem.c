@@ -471,6 +471,7 @@ void rand_set_abortflag(const char *file, int line, Backtraces_info *binfo){
     double rand_number = (double)rand_num / RAND_MAX;
     if(rand_number < probability){
         //正しい挙動
+        fprintf(stderr, "stack:\n%s\n", binfo->backtrace);
         fprintf(stderr, "set abortflag file: %s, line: %d, rand_set_count: %d\n", file, line, rand_set_count);
         //
         binfo->abort_count++;
