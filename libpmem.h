@@ -173,4 +173,7 @@ void debug_print_line(const char *file, int line);
 #define PMEMWRAP_DRAIN_NOWRAP() pmem_drain_nowrap()
 #define PMEMWRAP_PRINT_LINE() debug_print_line(__FILE__, __LINE__)
 
+#define PMEMWRAP_FLUSH(addr, len) pmem_flush(addr, len)
+#define PMEMWRAP_DRAIN() pmem_wrap_drain(__FILE__, __LINE__)
+
 #endif	/* libpmem.h */

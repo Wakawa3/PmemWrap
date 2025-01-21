@@ -10,6 +10,7 @@
 
 #define THREADS 1
 #define CACHE_LINE_SIZE 64
+#define MEMCMP_SIZE 8092
 
 //mapped_file1(元のPMDKファイル)にmapped_file2をコピー
 
@@ -58,42 +59,88 @@ void *rand_memcpy(void *p){
     int series_flag = 0;
     size_t from_offset = 0;
     
-// TODO: 4096byteあたりで区切って比較する
-    for(; offset < to; offset += CACHE_LINE_SIZE){
-        if(memcmp(mapped_file1 + offset, mapped_file2 + offset, CACHE_LINE_SIZE) != 0){
-            if(series_flag == 0){
-                from_offset = offset;
-                series_flag = 1;
-            }
-            
-            if(rand() % 2 == 0){
-                memcpy(mapped_file1 + offset, mapped_file2 + offset, CACHE_LINE_SIZE);
-            }
-        }
-        else{
-            if(series_flag == 1){
-                // printf("diff range: %lx - %lx\n", from_offset, offset);
-                series_flag = 0;
+    for(; offset < to; offset += MEMCMP_SIZE){
+        if(memcmp(mapped_file1 + offset, mapped_file2 + offset, MEMCMP_SIZE) != 0){
+            for(size_t inner_offset = 0; inner_offset < MEMCMP_SIZE; inner_offset += CACHE_LINE_SIZE){
+                size_t detailed_offset = offset + inner_offset;
+                if(memcmp(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, CACHE_LINE_SIZE) != 0){
+                    if(series_flag == 0){
+                        from_offset = detailed_offset;
+                        series_flag = 1;
+                    }
+                    
+                    if(rand() % 2 == 0){
+                        memcpy(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, CACHE_LINE_SIZE);
+                    }
+                }
+                else{
+                    if(series_flag == 1){
+                        // printf("diff range: %lx - %lx\n", from_offset, detailed_offset);
+                        series_flag = 0;
+                    }
+                }
             }
         }
     }
 
-    offset -= CACHE_LINE_SIZE;
-    size_t remainder = (to - offset) % CACHE_LINE_SIZE;
+    offset -= MEMCMP_SIZE;
+    size_t remainder = (to - offset) % MEMCMP_SIZE;
+    int remainder_cacheline = (to - offset) % CACHE_LINE_SIZE;
     if(remainder != 0){
         if(memcmp(mapped_file1 + offset, mapped_file2 + offset, remainder) != 0){
-            if(series_flag == 0){
-                from_offset = offset;
-                series_flag = 1;
-            }
+            size_t inner_offset = 0;
+            size_t detailed_offset = offset;
+            for(; inner_offset < remainder; inner_offset += CACHE_LINE_SIZE){
+                detailed_offset = offset + inner_offset;
+                if(memcmp(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, CACHE_LINE_SIZE) != 0){
+                    if(memcmp(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, CACHE_LINE_SIZE) != 0){
+                        if(series_flag == 0){
+                            from_offset = detailed_offset;
+                            series_flag = 1;
+                        }
 
-            if(rand() % 2 == 0){
-                memcpy(mapped_file1 + offset, mapped_file2 + offset, remainder);
+                        if(rand() % 2 == 0){
+                            memcpy(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, CACHE_LINE_SIZE);
+                        }
+                    }
+                    if(series_flag == 1){
+                        //printf("diff range: %lx - %lx\n", from_offset, detailed_offset);
+                        series_flag = 0;
+                    }
+                }
+            }
+            detailed_offset -= CACHE_LINE_SIZE;
+//ここ最後のほう
+            if(remainder_cacheline != 0){
+                if(memcmp(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, remainder_cacheline) != 0){
+                    if(series_flag == 0){
+                        from_offset = offset;
+                        series_flag = 1;
+                    }
+
+                    if(rand() % 2 == 0){
+                        memcpy(mapped_file1 + detailed_offset, mapped_file2 + detailed_offset, remainder_cacheline);
+                    }
+                }
             }
         }
         if(series_flag == 1){
-            //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
+            //printf("diff range: %lx - %lx\n", from_offset, offset + remainder);
+            series_flag = 0;
         }
+        // if(memcmp(mapped_file1 + offset, mapped_file2 + offset, remainder) != 0){
+        //     if(series_flag == 0){
+        //         from_offset = offset;
+        //         series_flag = 1;
+        //     }
+
+        //     if(rand() % 2 == 0){
+        //         memcpy(mapped_file1 + offset, mapped_file2 + offset, remainder);
+        //     }
+        // }
+        // if(series_flag == 1){
+        //     //printf("diff range: %lx - %lx\n", from_offset, offset + CACHE_LINE_SIZE);
+        // }
     }
 }
 
@@ -154,7 +201,8 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "PmemWrap_memcpy: != size\n");
         exit(1);
     }
-
+    
+    //size1とsize2が割り切れないとき、拡張して後で拡張した分を消す手もある？
 
     //fprintf(stderr, "multithread\n");
 

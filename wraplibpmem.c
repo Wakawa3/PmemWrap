@@ -1008,7 +1008,7 @@ void backtrace_file_offset(void *const *array, int size, char* buf, int start_tr
         if (status[i] && info[i].dli_fname && info[i].dli_fname[0] != '\0')
         {
             size_t offset = array[i] - info[i].dli_fbase;
-            if(strstr(buf, "libwrappmem.so") == NULL){
+            if(strstr(buf, "libwrappmem.so") == NULL && strstr(buf, "libpmem.so") == NULL && strstr(buf, "libpmemobj.so") == NULL){
                 sprintf(buf, "%s%s_++0x%lx\n", buf, info[i].dli_fname, offset);
             }
             else{
