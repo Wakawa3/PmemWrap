@@ -1,0 +1,4 @@
+[submodule "pmdk"]
+	path = pmdk
+	url = https://github.com/pmem/pmdk.git
+	branch = stable-2.1
