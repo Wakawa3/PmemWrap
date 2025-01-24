@@ -1,7 +1,0 @@
-+stack
-/lib64/ld-linux-x86-64.so.2_++0x11f6b
-/lib/x86_64-linux-gnu/libc.so.6_++0x468a7
-/lib/x86_64-linux-gnu/libc.so.6_++0x46a60
-/lib/x86_64-linux-gnu/libc.so.6_++0x2408a
-./a.out_++0x248e
-;

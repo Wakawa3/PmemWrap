@@ -2,3 +2,6 @@
 *.so
 *.o
 outputs/
+backtrace.txt
+countfile_plus.txt
+countfile.txt
