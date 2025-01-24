@@ -2,3 +2,6 @@
 	path = pmdk
 	url = https://github.com/pmem/pmdk.git
 	branch = stable-2.1
+[submodule "safepm"]
+	path = safepm
+	url = https://github.com/TUM-DSE/safepm.git
