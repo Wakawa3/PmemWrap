@@ -1,6 +1,7 @@
 *.out
 *.so
 *.o
+lib/
 outputs/
 pmdk_install/
 backtrace.txt

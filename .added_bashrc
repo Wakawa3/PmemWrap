@@ -3,6 +3,8 @@
 #     . ~/path/to/.added_bashrc
 # fi
 
+export PMEMWRAP_HOME="/home/satoshi/artifact/PmemWrap"
+
 export YCSB_HOME="/home/satoshi/mnt/kssd/workloads/ycsb-0.17.0"
 export MVN_HOME="/home/satoshi/workloads/apache-maven"
 export PATH="${PATH}:${MVN_HOME}/bin"
@@ -10,8 +12,7 @@ export PATH="${PATH}:/home/satoshi/.local/bin"
 export PATH="/home/satoshi/tools/CMake/bin:${PATH}"
 export PATH="/home/satoshi/tools:${PATH}"
 export PATH="/home/satoshi/mnt/kssd/tools/texlive/2023/bin/x86_64-linux:${PATH}"
-# export CPLUS_INCLUDE_PATH="/home/satoshi/tools/include:${CPLUS_INCLUDE_PATH}"
-# export C_INCLUDE_PATH="/home/satoshi/tools/include:${C_INCLUDE_PATH}"
+export CPATH="${PMEMWRAP_HOME}/wrapinclude:${CPATH}"
 # export CPLUS_INCLUDE_PATH="/home/satoshi/tools/libconfig/lib:${CPLUS_INCLUDE_PATH}"
 # export C_INCLUDE_PATH="/home/satoshi/tools/libconfig/lib:${C_INCLUDE_PATH}"
 # export CPLUS_INCLUDE_PATH="/home/satoshi/tools/uthash/include:${CPLUS_INCLUDE_PATH}"
@@ -23,8 +24,8 @@ export LIBRARY_PATH="/home/satoshi/tools/libconfig/build/out"
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/satoshi/tools/quartz/build/src/lib"
 export LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/satoshi/tools/quartz/build/src/lib"
 
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/satoshi/mnt/kssd/tools/fmt-8.1.1/build"
-export LIBRARY_PATH="${LIBRARY_PATH}:/home/satoshi/mnt/kssd/tools/fmt-8.1.1/build"
+# export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/satoshi/mnt/kssd/tools/fmt-8.1.1/build"
+# export LIBRARY_PATH="${LIBRARY_PATH}:/home/satoshi/mnt/kssd/tools/fmt-8.1.1/build"
 export PKG_CONFIG_PATH="/home/satoshi/mnt/kssd/tools/fmt-8.1.1/build:\
 /home/satoshi/mnt/kssd/tools/libpmemobj-cpp/build:\
 /home/satoshi/tools/cxxopts/build:\
@@ -32,19 +33,27 @@ export PKG_CONFIG_PATH="/home/satoshi/mnt/kssd/tools/fmt-8.1.1/build:\
 /home/satoshi/mnt/kssd/tools/jemalloc_installed/lib/pkgconfig"
 # /home/satoshi/mnt/kssd/pmdks/pmdk_installed/lib/pkgconfig"
 
-# export PATH=$PATH:/home/soichiro.sakamoto/mnt/llvm/bin
-# export LLVM_DIR=/home/soichiro.sakamoto/mnt/llvm
-
 export ASAN_OPTIONS=halt_on_error=0:suppressions=/home/satoshi/PmemWrap/MyASan.supp
-export PMEMWRAP_SOLIB_PATH=/home/satoshi/safepm/build/pmdk/install/lib/pmdk_debug
-# export PMEMWRAP_SOLIB_PATH=/home/satoshi/testlib/lib
-# export PMEMWRAP_SOLIB_PATH=/home/satoshi/mnt/kssd/pmdks/pmdk_installed/lib
+
+export PMDK_INSTALL="${PMEMWRAP_HOME}/pmdk_install"
+export PMEMWRAP_SOLIB_PATH="${PMDK_INSTALL}/lib"
+
+# export PMDK_INSTALL="${PMEMWRAP_HOME}/safepm/build/pmdk/install"
+# export PMEMWRAP_SOLIB_PATH="${PMDK_INSTALL}/lib/pmdk_debug"
+
+export CPATH="${CPATH}:${PMDK_INSTALL}/include"
+
+# echo ${CPLUS_INCLUDE_PATH}
+echo ${CPATH}
+
 
 export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PMEMWRAP_SOLIB_PATH}"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/satoshi/PmemWrap:/home/satoshi/rocksdb_bin/lib"
+export LIBRARY_PATH="${LIBRARY_PATH}:${PMEMWRAP_SOLIB_PATH}"
+export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${PMEMWRAP_HOME}/lib"
+# export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/home/satoshi/rocksdb_bin/lib"
 export LIBRARY_PATH=/home/satoshi/PmemWrap:${LIBRARY_PATH}
 
-export CPATH=/home/satoshi/workloads/rocksdb_bin/include
+# export CPATH=/home/satoshi/workloads/rocksdb_bin/include
 
 export PMEMWRAP_ABORT=0
 export PMEMWRAP_WRITECOUNTFILE=YES

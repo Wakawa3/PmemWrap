@@ -1,6 +1,6 @@
 CC = gcc
 # CFLALGS = -g -O0 -lwrappmem -lpmem -lpmemobj
-TARGET = libwrappmem.so
+TARGET = lib/libwrappmem.so
 SRCS = wraplibpmem.c wraplibpmemobj.c
 OBJS = $(SRCS:.c=.o)
 
