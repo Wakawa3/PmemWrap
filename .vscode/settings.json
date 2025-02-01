@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "libpmemobj.h": "c",
+        "cstring": "cpp",
+        "cmath": "cpp",
+        "vector": "cpp",
+        "cstdlib": "cpp",
+        "ostream": "cpp"
+    }
+}

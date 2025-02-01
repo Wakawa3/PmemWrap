@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "libpmemobj.h"
+#include <libpmemobj.h>
 
 // Name of our layout in the pool
 #define LAYOUT "hello_layout"

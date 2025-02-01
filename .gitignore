@@ -1,9 +1,12 @@
 *.out
 *.so
 *.o
+bin/
 lib/
 outputs/
 pmdk_install/
 backtrace.txt
 countfile_plus.txt
 countfile.txt
+.added_bashrc_old
+memo

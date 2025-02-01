@@ -4,9 +4,10 @@ TARGET = lib/libwrappmem.so
 SRCS = wraplibpmem.c wraplibpmemobj.c
 OBJS = $(SRCS:.c=.o)
 
-all: $(TARGET) PmemWrap_memcpy.out
+all: $(TARGET) bin/PmemWrap_memcpy.out
 
 $(TARGET): $(OBJS)
+	mkdir -p lib
 	$(CC) -shared -o $(TARGET) $(OBJS) -ldl -pthread -g -O0
 
 wraplibpmem.o: wraplibpmem.c wraplibpmem.h
@@ -16,9 +17,10 @@ wraplibpmemobj.o: wraplibpmemobj.c wraplibpmem.h wraplibpmemobj.h
 	$(CC) -c -fPIC wraplibpmemobj.c -o wraplibpmemobj.o -g -O0
 
 clean:
-	-rm -f $(OBJS) $(TARGET) PmemWrap_memcpy.out
+	rm -f $(OBJS) $(TARGET) bin/PmemWrap_memcpy.out
 
-PmemWrap_memcpy.out: PmemWrap_memcpy.c
+bin/PmemWrap_memcpy.out: PmemWrap_memcpy.c
+	mkdir -p bin
 	gcc -o $@ $^ -pthread
 
 #$@は:の左 $^は:の右

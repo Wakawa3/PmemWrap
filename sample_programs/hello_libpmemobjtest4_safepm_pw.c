@@ -73,8 +73,7 @@ int main(int argc, char *argv[])
 
 		// POBJ_FREE(&object1);
 		
-		// PMEMWRAP_FORCE_ABORT();
-		// abort();
+		PMEMWRAP_FORCE_ABORT();
 	}
 	
 	else{
