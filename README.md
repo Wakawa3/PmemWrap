@@ -2,9 +2,9 @@
 
 ## はじめに
 
-はじめに'ndctl list'でPMのmodeを確認する.
+はじめに`ndctl list`でPMのmodeを確認する.
 
-'''sh
+```sh
 ndctl list
 
 [
@@ -27,4 +27,4 @@ ndctl list
     "align":2097152
   }
 ]
-'''
+```
