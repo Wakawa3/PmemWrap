@@ -1,6 +1,6 @@
 # 以下の3行を ~/.bashrc に追記する
-# if [ -f ~/path/to/.added_bashrc ]; then
-#     . ~/path/to/.added_bashrc
+# if [ -f ~/path/to/.bashrc_pmemwrap ]; then
+#     . ~/path/to/.bashrc_pmemwrap
 # fi
 
 export PMEMWRAP_HOME="/home/satoshi/artifact/PmemWrap"
