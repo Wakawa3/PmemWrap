@@ -96,7 +96,8 @@ ${PMEMWRAP_HOME}/bin/PmemWrap_memcpy.out /mnt/pmem0/test4_safepm_pw /mnt/pmem0/t
 rm -f /mnt/pmem0/test4_safepm_pw /mnt/pmem0/test4_safepm_pw_flushed
 ```
 
-2回目の`./a.out /mnt/pmem0/test4_safepm_pw`でクラッシュする場合とクラッシュしない場合がある．このサンプルプログラムは適切に永続化処理していないことで再実行時にクラッシュする可能性があり，実際に2回目の実行でクラッシュすることが確認できれば，正常にテストが完了したことになる．
+1回目の`./a.out /mnt/pmem0/test4_safepm_pw`(pre-failure execution)では，途中の特定の時点でクラッシュさせている．
+2回目の`./a.out /mnt/pmem0/test4_safepm_pw`(post-failure execution)でクラッシュする場合とクラッシュしない場合がある．このサンプルプログラムは適切に永続化処理していないことで再実行時にクラッシュする可能性があり，実際に2回目の実行でクラッシュすることが確認できれば，正常にテストが完了したことになる．
 
 ## CCEHのテスト
 
@@ -110,4 +111,4 @@ cd test_targets/CCEH/CCEH-PMDK
 ./testexamples_safepm.sh
 ```
 
-結果は`CCEH-PMDK`下の`outputs_safepm`ディレクトリに出力される．
+結果は`CCEH-PMDK`下の`outputs_safepm`ディレクトリに出力される．末尾に_sema.txtと書かれたファイルは，不具合が発生した時点のスタックトレースごとに，1回目の実行(pre-failure)でクラッシュした際のスタックトレースを表している．
